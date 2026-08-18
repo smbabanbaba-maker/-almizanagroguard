@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 import { startLogin } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,8 @@ import {
   Upload,
   UserRound,
   Wind,
+  Moon,
+  Sun,
   X,
   Zap,
 } from "lucide-react";
@@ -46,6 +49,18 @@ const navItems: { id: Section; label: string; icon: typeof Leaf }[] = [
 
 const confidenceLabel = (value: number) =>
   value >= 70 ? "High" : value >= 50 ? "Medium" : "Low";
+
+const weatherSnapshot = {
+  location: "Your farm area",
+  condition: "Clear skies",
+  temperature: "29°",
+  feelsLike: "Feels like 31°",
+  rain: "24%",
+  humidity: "68%",
+  wind: "11 km/h",
+  fieldNote: "Good window for scouting and light field work.",
+  source: "Local preview · connect a live provider for updates",
+};
 
 function AppMark() {
   return (
@@ -78,6 +93,7 @@ export default function Home() {
   ]);
   const fileInput = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const analyze = trpc.cropHealth.analyze.useMutation({
     onSuccess: data => {
       setScanResult(data);
@@ -231,6 +247,23 @@ export default function Home() {
             </h1>
           </div>
           <div className="topbar-right">
+            <button
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={
+                theme === "dark"
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+              title={
+                theme === "dark"
+                  ? "Switch to light mode"
+                  : "Switch to dark mode"
+              }
+            >
+              <span>{theme === "dark" ? "LIGHT" : "DARK"}</span>
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
             <span className="status-dot" />{" "}
             <span className="live-label">AI services ready</span>
             <div className="top-avatar">
@@ -467,14 +500,35 @@ function HomeSection({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="weather-pending">
-              <ThermometerSun size={26} />
+            <div className="weather-summary">
               <div>
-                <strong>Weather integration pending</strong>
-                <p>
-                  Connect a local weather source to see live field conditions.
-                </p>
+                <span className="weather-location">
+                  <MapPin size={13} /> {weatherSnapshot.location}
+                </span>
+                <strong className="weather-temperature">
+                  {weatherSnapshot.temperature}
+                </strong>
+                <span className="weather-condition">
+                  {weatherSnapshot.condition} · {weatherSnapshot.feelsLike}
+                </span>
               </div>
+              <div className="weather-orb">
+                <CloudSun size={30} />
+              </div>
+            </div>
+            <div className="weather-metrics-inline">
+              <span>
+                <Droplets size={14} /> {weatherSnapshot.rain} rain
+              </span>
+              <span>
+                <Droplets size={14} /> {weatherSnapshot.humidity} humidity
+              </span>
+              <span>
+                <Wind size={14} /> {weatherSnapshot.wind}
+              </span>
+            </div>
+            <div className="weather-field-note">
+              <Sprout size={15} /> {weatherSnapshot.fieldNote}
             </div>
             <Button
               variant="ghost"
@@ -713,6 +767,23 @@ function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
 }
 
 function WeatherSection() {
+  const metrics = [
+    [
+      ThermometerSun,
+      "Temperature",
+      weatherSnapshot.temperature,
+      weatherSnapshot.feelsLike,
+    ],
+    [
+      Droplets,
+      "Rain probability",
+      weatherSnapshot.rain,
+      "Plan irrigation early",
+    ],
+    [Droplets, "Humidity", weatherSnapshot.humidity, "Watch leaf wetness"],
+    [Wind, "Wind speed", weatherSnapshot.wind, "Safe for scouting"],
+  ] as const;
+
   return (
     <div className="page-stack">
       <div className="feature-intro">
@@ -721,28 +792,30 @@ function WeatherSection() {
         </span>
         <h2>Weather / Climate</h2>
         <p>
-          A clear view of conditions that can shape field decisions. Connect a
-          local weather provider when you are ready for live data.
+          See the conditions that shape field decisions, from scouting windows
+          to irrigation planning.
         </p>
       </div>
-      <div className="pending-banner">
-        <CloudSun size={22} />
-        <div>
-          <strong>Weather integration pending</strong>
-          <span>
-            Live conditions are intentionally not shown until a trusted weather
-            API is configured.
-          </span>
-        </div>
-        <Badge className="badge-muted">Not connected</Badge>
-      </div>
+      <Card className="weather-hero-card">
+        <CardContent>
+          <div className="weather-hero-copy">
+            <span className="weather-location">
+              <MapPin size={14} /> {weatherSnapshot.location}
+            </span>
+            <strong>{weatherSnapshot.temperature}</strong>
+            <h3>{weatherSnapshot.condition}</h3>
+            <p>
+              {weatherSnapshot.feelsLike} · {weatherSnapshot.fieldNote}
+            </p>
+          </div>
+          <div className="weather-hero-orb">
+            <CloudSun size={54} />
+          </div>
+          <span className="weather-source">{weatherSnapshot.source}</span>
+        </CardContent>
+      </Card>
       <div className="weather-grid">
-        {[
-          [ThermometerSun, "Temperature", "—", "Waiting for source"],
-          [Droplets, "Rain probability", "—", "Waiting for source"],
-          [Droplets, "Humidity", "—", "Waiting for source"],
-          [Wind, "Wind speed", "—", "Waiting for source"],
-        ].map(([Icon, label, value, sub]: any) => (
+        {metrics.map(([Icon, label, value, sub]) => (
           <Card className="metric-card" key={label}>
             <CardContent>
               <div className="metric-icon">
@@ -761,31 +834,40 @@ function WeatherSection() {
             <CardTitle>Weather alerts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="empty-insight">
-              <div className="empty-icon">
-                <ShieldCheck size={21} />
-              </div>
+            <div className="weather-alert">
+              <ShieldCheck size={19} />
               <div>
-                <strong>No alerts available</strong>
-                <p>Alerts will appear once a weather provider is connected.</p>
+                <strong>No active alerts</strong>
+                <p>
+                  AgroGuard will flag heat, heavy rain, wind, and dry-spell
+                  risks when a live provider is connected.
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Climate risk</CardTitle>
+            <CardTitle>Field guidance</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="risk-placeholder">
-              <span>RISK MODEL READY</span>
+              <span>FIELD WINDOW</span>
               <p>
-                Prepare for heat stress, heavy rain, dry spells, and wind events
-                with configurable field thresholds.
+                {weatherSnapshot.fieldNote} Avoid spraying when wind increases
+                or leaf surfaces are wet.
               </p>
             </div>
           </CardContent>
         </Card>
+      </div>
+      <div className="weather-connect-note">
+        <CloudSun size={17} />
+        <span>
+          <strong>Ready for live weather</strong> Connect a trusted local
+          weather API to replace this preview without changing the dashboard
+          components.
+        </span>
       </div>
     </div>
   );

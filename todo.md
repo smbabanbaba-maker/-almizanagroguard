@@ -43,4 +43,50 @@
 
 ## User-requested GitHub synchronization
 
-- [ ] Push the latest validated AgroGuard checkpoint to smbabanbaba-maker/-almizanagroguard and verify the remote main branch
+- [x] Push the latest validated AgroGuard checkpoint to smbabanbaba-maker/-almizanagroguard and verify the remote main branch
+
+## Dark mode
+
+- [x] Add a visible desktop and mobile theme toggle with accessible labels
+- [x] Persist the user’s light/dark preference and respect the system preference on first visit (including prefers-color-scheme detection)
+- [x] Add dark visual tokens for page background, cards, borders, typography, navigation, buttons, badges, upload states, chat, and farm panels
+- [x] Verify dark mode on desktop and mobile previews and run type checks, tests, formatting, and production build (actual dark mobile previews captured)
+
+## Vercel deployment fix
+
+- [x] Diagnose why the public Vercel URL exposes source code instead of rendering AgroGuard (the shown URL currently returns DEPLOYMENT_NOT_FOUND; the listed team project is unrelated farmx-rvrb)
+- [ ] Correct the Vercel root/build/output configuration or deployment integration (GitHub project linking was attempted; Vercel blocked the preview/production deployment with a team permission 403)
+- [ ] Verify the public URL renders the AgroGuard UI and does not expose source files
+
+## Vercel recheck
+
+- [x] Recheck izanagroguard.vercel.app and the current Vercel deployment status (public URL still returns DEPLOYMENT_NOT_FOUND; team list still shows only farmx-rvrb)
+
+## Approved agritech-vision transfer
+
+- [x] Inspect smbabanbaba-maker/agritech-vision branch, history, and existing application files
+- [x] Integrate the validated AgroGuard application without exposing secrets or discarding unrelated repository work (original contents preserved on pre-agroguard-transfer)
+- [x] Run validation checks on the integrated repository and push the confirmed branch (type check, tests, formatting, and production build passed; lint script was unavailable)
+- [ ] Link or configure the correct Vercel project for agritech-vision and verify a public AgroGuard deployment
+
+## Farmer weather widget
+
+- [x] Add a dashboard weather widget with city/location, current condition, temperature, rain probability, humidity, wind speed, and practical field guidance
+- [x] Add clear weather alerts and a visible modular integration boundary for replacing the current preview data with a real weather API
+- [x] Verify the weather widget in light/dark desktop and mobile layouts, run checks, and save a checkpoint
+
+## Weather widget repository sync
+
+- [x] Sync the validated weather widget changes to smbabanbaba-maker/agritech-vision and verify the remote commit (5b1da7b)
+
+## Vercel Ready deployment repair
+
+- [ ] Inspect the Ready deployment’s project, repository, branch, commit, and build logs
+- [ ] Correct the Vercel source linkage and server-aware build settings without exposing secrets
+- [ ] Redeploy or identify the exact permission blocker, then verify the public domain renders AgroGuard UI
+
+## User-selected deployment target correction
+
+- [ ] Confirm and synchronize the latest AgroGuard code to smbabanbaba-maker/-almizanagroguard
+- [ ] Correct or relink the Vercel project for -almizanagroguard and verify its production deployment
+- [ ] Report the exact GitHub repository, branch, commit, and Vercel URL after verification

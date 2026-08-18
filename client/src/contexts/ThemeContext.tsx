@@ -23,8 +23,13 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (switchable) {
+      const preview = new URLSearchParams(window.location.search).get("theme");
+      if (preview === "light" || preview === "dark") return preview;
       const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
+      if (stored === "light" || stored === "dark") return stored;
+      return window.matchMedia?.("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : defaultTheme;
     }
     return defaultTheme;
   });
