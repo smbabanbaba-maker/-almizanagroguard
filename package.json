@@ -9,6 +9,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
+    "format:check": "prettier --check client/src/App.tsx client/src/index.css client/src/pages/Home.tsx server/ai server/db.ts server/routers.ts server/cropAnalysis.test.ts server/procedures.test.ts server/resultParser.test.ts drizzle/schema.ts README.md todo.md",
     "test": "vitest run",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
