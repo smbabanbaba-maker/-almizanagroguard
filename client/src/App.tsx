@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 
 const appBase = import.meta.env.BASE_URL.replace(/\/$/, "");
+const isGitHubPagesBuild = Boolean(appBase);
 const appPath = (path: string) => {
   if (!appBase) return path;
   return path === "/" ? `${appBase}/` : `${appBase}${path}`;
@@ -21,7 +22,7 @@ function Router() {
       <Route path={appPath("/ask")} component={Home} />
       <Route path={appPath("/farm")} component={Home} />
       <Route path={appPath("/404")} component={NotFound} />
-      <Route component={NotFound} />
+      <Route component={isGitHubPagesBuild ? Home : NotFound} />
     </Switch>
   );
 }
