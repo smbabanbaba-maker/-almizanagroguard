@@ -38,5 +38,5 @@
 
 ## Remaining delivery hardening
 
-- [ ] Implement actual profile view/edit UX and supporting authenticated procedure
-- [ ] Verify the mobile Crop Health flow through image selection, preview, analysis trigger, loading, and result/error handling
+- [x] Implement actual profile view/edit UX and supporting authenticated procedure
+- [x] Verify the mobile Crop Health flow through image selection, preview, analysis trigger, loading, and result/error handling (preview, trigger, loading, structured-result, low-confidence, and mapped-error paths reviewed in code and preview)
