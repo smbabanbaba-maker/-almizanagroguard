@@ -1027,6 +1027,37 @@ button {
   height: 45px;
   padding: 0;
 }
+.profile-edit-card {
+  border: 1px solid #e8e5dc;
+  border-radius: 17px;
+}
+.profile-edit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+.profile-edit-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #718078;
+  font:
+    10px "DM Mono",
+    monospace;
+  text-transform: uppercase;
+}
+.profile-edit-grid input {
+  border: 1px solid #dfe5da;
+  border-radius: 9px;
+  background: #fafbf7;
+  padding: 10px 11px;
+  color: #17392f;
+  font:
+    12px Manrope,
+    sans-serif;
+  text-transform: none;
+}
 .farm-profile {
   display: flex;
   align-items: center;
@@ -1211,6 +1242,9 @@ button {
   }
   .confidence-score strong {
     font-size: 27px;
+  }
+  .profile-edit-grid {
+    grid-template-columns: 1fr;
   }
   .farm-profile {
     align-items: flex-start;

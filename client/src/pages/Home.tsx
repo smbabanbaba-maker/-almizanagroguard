@@ -64,6 +64,9 @@ export default function Home() {
   const [scanPreview, setScanPreview] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<any>(null);
   const [chatInput, setChatInput] = useState("");
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [profileName, setProfileName] = useState("");
+  const [profileEmail, setProfileEmail] = useState("");
   const [chatMessages, setChatMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([
@@ -92,6 +95,13 @@ export default function Home() {
   );
   const { data: farmOverview } = trpc.farm.overview.useQuery(undefined, {
     enabled: Boolean(user),
+  });
+  const profileUpdate = trpc.profile.update.useMutation({
+    onSuccess: () => {
+      setProfileEditing(false);
+      toast.success("Profile updated");
+    },
+    onError: () => toast.error("We couldn't update your profile right now."),
   });
   const ask = trpc.agroguard.ask.useMutation({
     onSuccess: data =>
@@ -259,6 +269,18 @@ export default function Home() {
           {current === "farm" && (
             <FarmSection
               user={user}
+              profileEditing={profileEditing}
+              setProfileEditing={setProfileEditing}
+              profileName={profileName || user?.name || ""}
+              setProfileName={setProfileName}
+              profileEmail={profileEmail || user?.email || ""}
+              setProfileEmail={setProfileEmail}
+              saveProfile={() =>
+                profileUpdate.mutate({
+                  name: profileName || user?.name || "",
+                  email: profileEmail || user?.email || "",
+                })
+              }
               recentScans={farmOverview?.scans ?? recentScans}
               analyses={farmOverview?.analyses ?? []}
               recommendations={farmOverview?.recommendations ?? []}
@@ -848,6 +870,13 @@ function AskSection({ messages, input, setInput, send, pending }: any) {
 
 function FarmSection({
   user,
+  profileEditing,
+  setProfileEditing,
+  profileName,
+  setProfileName,
+  profileEmail,
+  setProfileEmail,
+  saveProfile,
   recentScans = [],
   analyses = [],
   recommendations = [],
@@ -879,10 +908,45 @@ function FarmSection({
             <MapPin size={14} /> {farms[0]?.location || "Location not set"}
           </p>
         </div>
-        <Button variant="outline" onClick={startLogin}>
-          {user ? "Edit profile" : "Sign in to save"}
-        </Button>
+        {user ? (
+          <Button
+            variant="outline"
+            onClick={() => setProfileEditing(!profileEditing)}
+          >
+            {profileEditing ? "Close editor" : "Edit profile"}
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={startLogin}>
+            Sign in to save
+          </Button>
+        )}
       </div>
+      {user && profileEditing && (
+        <Card className="profile-edit-card">
+          <CardContent>
+            <div className="profile-edit-grid">
+              <label>
+                Name
+                <input
+                  value={profileName}
+                  onChange={event => setProfileName(event.target.value)}
+                />
+              </label>
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={profileEmail}
+                  onChange={event => setProfileEmail(event.target.value)}
+                />
+              </label>
+              <Button className="primary-btn" onClick={saveProfile}>
+                Save profile
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <div className="farm-grid">
         {[
           [

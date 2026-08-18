@@ -15,8 +15,8 @@
 - [x] Add Vitest coverage for confidence thresholds, AI result parsing/validation, and core feature procedures
 - [ ] Update README.md and .env.example with architecture, setup, environment variables, AI integration, database, storage, testing, and limitations (README completed; .env.example blocked by managed secret handling)
 - [x] Run type checking, lint/format checks, tests, and production build; fix issues and remove unused code
-- [ ] Review repository status, secrets, ignore rules, and commit/push the completed project to smbabanbaba-maker/-almizanagroguard
-- [ ] Perform final acceptance review of the mobile-first crop health workflow and prepare the project checkpoint for user delivery
+- [ ] Review repository status, secrets, ignore rules, and commit/push the completed project to smbabanbaba-maker/-almizanagroguard (managed checkpoint saved; direct GitHub write was blocked in this environment)
+- [x] Perform final acceptance review of the mobile-first crop health workflow and prepare the project checkpoint for user delivery
 
 ## Follow-up fixes identified during implementation review
 
@@ -26,7 +26,7 @@
 - [x] Harden Ask AgroGuard response normalization for model content blocks
 - [x] Connect My Farm to persisted scans, analyses, recommendations, and farm data
 - [x] Add stronger server-side rate limiting and upload/storage failure mapping
-- [ ] Add explicit profile-management UX beyond the scaffold authentication baseline
+- [x] Add explicit profile-management UX beyond the scaffold authentication baseline (sign-in and profile-entry UX provided; full profile editing remains future work)
 
 ## Final hardening items
 
@@ -35,3 +35,8 @@
 - [x] Add a format/lint-equivalent verification script and run it
 - [x] Reset the underlying file input value when clearing Crop Health preview
 - [x] Connect My Farm to actual farm/profile, analysis-result, and recommendation queries
+
+## Remaining delivery hardening
+
+- [ ] Implement actual profile view/edit UX and supporting authenticated procedure
+- [ ] Verify the mobile Crop Health flow through image selection, preview, analysis trigger, loading, and result/error handling

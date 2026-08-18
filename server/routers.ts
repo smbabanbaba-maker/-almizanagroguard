@@ -7,7 +7,12 @@ import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { analyzeCropImage } from "./ai/cropAnalysis";
 import { contentToText } from "./ai/resultParser";
-import { saveCropAnalysis, getRecentScans, getFarmOverview } from "./db";
+import {
+  saveCropAnalysis,
+  getRecentScans,
+  getFarmOverview,
+  updateUserProfile,
+} from "./db";
 
 const questionSchema = z.object({
   question: z.string().trim().min(3).max(1200),
@@ -123,6 +128,18 @@ export const appRouter = router({
         };
       }),
     recent: protectedProcedure.query(({ ctx }) => getRecentScans(ctx.user.id)),
+  }),
+  profile: router({
+    update: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().trim().min(2).max(120),
+          email: z.string().email().max(320),
+        })
+      )
+      .mutation(({ ctx, input }) =>
+        updateUserProfile(ctx.user.id, input.name, input.email)
+      ),
   }),
   farm: router({
     overview: protectedProcedure.query(({ ctx }) =>
