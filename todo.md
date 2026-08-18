@@ -90,3 +90,8 @@
 - [ ] Confirm and synchronize the latest AgroGuard code to smbabanbaba-maker/-almizanagroguard
 - [ ] Correct or relink the Vercel project for -almizanagroguard and verify its production deployment
 - [ ] Report the exact GitHub repository, branch, commit, and Vercel URL after verification
+
+## Vercel runtime configuration
+
+- [ ] Add and validate an explicit Node-server Vercel configuration for AgroGuard
+- [ ] Sync the Vercel configuration to -almizanagroguard and verify the next deployment source
