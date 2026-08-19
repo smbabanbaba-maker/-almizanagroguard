@@ -245,8 +245,12 @@
 - [x] Push the latest production API routing fix and validated project state to smbabanbaba-maker/-almizanagroguard main
 - [x] Add a Vercel-detected nested `/api/trpc/[...path].js` wrapper so dotted tRPC procedure paths such as `agroguard.ask` do not return Vercel 404
 - [x] Diagnose and fix the production Crop Health AI assessment failure shown after a mobile image upload (compress mobile uploads before Vercel analysis and surface actionable provider/payload errors)
-- [ ] Fix Ask AgroGuard to handle short inputs like Hi without exposing raw validation JSON
-- [ ] Replace Crop Health generic AI failure display with a clear actionable Vercel/OpenAI error path
-- [ ] Confirm production code paths do not require Manus hosting for Vercel deployment
-- [ ] Replace the Vercel Express export boundary that still causes `FUNCTION_INVOCATION_FAILED` on public tRPC routes
-- [ ] Verify public `/api/trpc/auth.me` and `/api/trpc/agroguard.ask` return JSON on the final Vercel deployment
+- [x] Fix Ask AgroGuard to handle short inputs like Hi without exposing raw validation JSON
+- [x] Replace Crop Health generic AI failure display with a clear actionable Vercel/OpenAI error path
+- [x] Confirm production code paths do not require Manus hosting for Vercel deployment
+- [x] Replace the Vercel Express export boundary that still causes `FUNCTION_INVOCATION_FAILED` on public tRPC routes
+- [x] Verify public `/api/trpc/auth.me` and `/api/trpc/agroguard.ask` return JSON on the final Vercel deployment
+- [ ] Verify a valid Vercel OpenAI key and `AGROGUARD_AI_MODEL=gpt-4o-mini` produce a live AI answer after the provider route repair
+- [ ] Convert Ask AgroGuard and Crop Health to Gemini-only AI configuration for Vercel production
+- [ ] Remove OpenAI-specific production guidance and add secure Gemini API key setup instructions for Vercel
+- [ ] Push and verify the Gemini-only Vercel bundle from GitHub main

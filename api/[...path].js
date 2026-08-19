@@ -69,13 +69,6 @@ var import_server = require("@trpc/server");
 
 // server/_core/env.ts
 var nonEmpty = (value) => value?.trim() || "";
-var resolveAiProvider = () => {
-  const configured = nonEmpty(process.env.AGROGUARD_AI_PROVIDER).toLowerCase();
-  if (configured) return configured;
-  if (nonEmpty(process.env.OPENAI_API_KEY)) return "openai";
-  if (nonEmpty(process.env.GEMINI_API_KEY)) return "gemini";
-  return "builtin";
-};
 var ENV = {
   appId: nonEmpty(process.env.VITE_APP_ID),
   cookieSecret: nonEmpty(process.env.JWT_SECRET),
@@ -87,7 +80,10 @@ var ENV = {
   forgeApiKey: nonEmpty(process.env.BUILT_IN_FORGE_API_KEY),
   openAiApiKey: nonEmpty(process.env.OPENAI_API_KEY),
   geminiApiKey: nonEmpty(process.env.GEMINI_API_KEY),
-  aiProvider: resolveAiProvider(),
+  // AgroGuard production uses Gemini exclusively. This avoids silently
+  // falling back to the legacy Manus or OpenAI paths when a Vercel variable
+  // is omitted or misspelled.
+  aiProvider: "gemini",
   aiModel: nonEmpty(process.env.AGROGUARD_AI_MODEL)
 };
 
@@ -301,33 +297,10 @@ var normalizeToolChoice = (toolChoice, tools) => {
   }
   return toolChoice;
 };
-var resolveProvider = () => ENV.aiProvider;
-var resolveApiUrl = () => {
-  switch (resolveProvider()) {
-    case "openai":
-      return "https://api.openai.com/v1/chat/completions";
-    case "gemini":
-      return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-    default:
-      return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0 ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions` : "https://forge.manus.im/v1/chat/completions";
-  }
-};
-var resolveApiKey = () => {
-  switch (resolveProvider()) {
-    case "openai":
-      return ENV.openAiApiKey;
-    case "gemini":
-      return ENV.geminiApiKey;
-    default:
-      return ENV.forgeApiKey;
-  }
-};
-var resolveDefaultModel = () => {
-  if (ENV.aiModel) return ENV.aiModel;
-  if (resolveProvider() === "openai") return "gpt-4o-mini";
-  if (resolveProvider() === "gemini") return "gemini-1.5-flash";
-  return void 0;
-};
+var resolveProvider = () => "gemini";
+var resolveApiUrl = () => "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+var resolveApiKey = () => ENV.geminiApiKey;
+var resolveDefaultModel = () => ENV.aiModel || "gemini-2.0-flash";
 var assertApiKey = () => {
   if (!resolveApiKey()) {
     throw new Error(`${resolveProvider()} AI provider is not configured`);
@@ -465,11 +438,7 @@ async function invokeLLM(params) {
   const headers = {
     "content-type": "application/json"
   };
-  if (resolveProvider() === "gemini") {
-    headers["x-goog-api-key"] = apiKey;
-  } else {
-    headers.authorization = `Bearer ${apiKey}`;
-  }
+  headers["x-goog-api-key"] = apiKey;
   const response = await fetchWithBackoff(resolveApiUrl(), {
     method: "POST",
     headers,

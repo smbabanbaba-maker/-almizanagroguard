@@ -68,22 +68,19 @@ The project now exposes a Vercel-detected root Express entrypoint at `server.ts`
 
 Vercel does not receive environment-variable changes in an already-created deployment; after adding or changing variables, create a new deployment.[1] Select **Production**, **Preview**, and **Development** as appropriate in the Vercel project settings. The following table describes the server-side variables needed for a full deployment.
 
-| Variable                                                        | Required use                                                                 | Example or source                                |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------ |
-| `DATABASE_URL`                                                  | MySQL/TiDB connection used by Drizzle ORM                                    | TLS-enabled database connection string           |
-| `JWT_SECRET`                                                    | Session-cookie signing secret                                                | Long random secret                               |
-| `VITE_APP_ID`                                                   | Manus OAuth application identifier                                           | Manus project configuration                      |
-| `OAUTH_SERVER_URL`                                              | OAuth server base URL                                                        | Manus OAuth configuration                        |
-| `VITE_OAUTH_PORTAL_URL`                                         | Browser login portal URL                                                     | Manus OAuth configuration                        |
-| `OWNER_OPEN_ID` and `OWNER_NAME`                                | Project owner identity and admin bootstrap                                   | Manus project configuration                      |
-| `BUILT_IN_FORGE_API_URL` and `BUILT_IN_FORGE_API_KEY`           | Built-in Manus LLM/storage integrations when `AGROGUARD_AI_PROVIDER=builtin` | Managed project secrets                          |
-| `VITE_FRONTEND_FORGE_API_URL` and `VITE_FRONTEND_FORGE_API_KEY` | Frontend access to permitted built-in services                               | Managed project secrets                          |
-| `GEMINI_API_KEY`                                                | Server-only Gemini provider key                                              | Google AI Studio key; never use a `VITE_` prefix |
-| `OPENAI_API_KEY`                                                | Server-only OpenAI provider key                                              | OpenAI platform key; never use a `VITE_` prefix  |
-| `AGROGUARD_AI_PROVIDER`                                         | Provider selector                                                            | `gemini`, `openai`, or `builtin`                 |
-| `AGROGUARD_AI_MODEL`                                            | Optional model override                                                      | `gemini-1.5-flash` or `gpt-4o-mini`              |
+| Variable                         | Required use                               | Example or source                                |
+| -------------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| `DATABASE_URL`                   | MySQL/TiDB connection used by Drizzle ORM  | TLS-enabled database connection string           |
+| `JWT_SECRET`                     | Session-cookie signing secret              | Long random secret                               |
+| `VITE_APP_ID`                    | Manus OAuth application identifier         | Manus project configuration                      |
+| `OAUTH_SERVER_URL`               | OAuth server base URL                      | Manus OAuth configuration                        |
+| `VITE_OAUTH_PORTAL_URL`          | Browser login portal URL                   | Manus OAuth configuration                        |
+| `OWNER_OPEN_ID` and `OWNER_NAME` | Project owner identity and admin bootstrap | Manus project configuration                      |
+| `GEMINI_API_KEY`                 | Server-only Gemini provider key            | Google AI Studio key; never use a `VITE_` prefix |
+| `AGROGUARD_AI_PROVIDER`          | Gemini-only selector                       | `gemini`                                         |
+| `AGROGUARD_AI_MODEL`             | Gemini model override                      | `gemini-2.0-flash`                               |
 
-For Gemini, set `AGROGUARD_AI_PROVIDER=gemini` and provide `GEMINI_API_KEY`. For OpenAI, set `AGROGUARD_AI_PROVIDER=openai` and provide `OPENAI_API_KEY`. The server selects the provider and model; no API key is read by the React client. If the selected provider has no key, the server returns a clear configuration error instead of making an unauthenticated upstream request.
+AgroGuard is configured for **Gemini only**. Set `AGROGUARD_AI_PROVIDER=gemini`, `AGROGUARD_AI_MODEL=gemini-2.0-flash`, and provide `GEMINI_API_KEY`. The server uses Gemini for both Ask AgroGuard and Crop Health; no API key is read by the React client. If the key is absent or rejected, the server returns a clear configuration error instead of making an unauthenticated upstream request.
 
 After deployment, verify `https://your-domain.vercel.app/api/health` returns a JSON status of `ok`, then verify `https://your-domain.vercel.app/api/trpc/auth.me` responds with the unauthenticated tRPC result. Complete OAuth, database, storage, and AI checks only after the corresponding Vercel variables have been added. The MySQL-compatible database must be reachable from Vercel’s server runtime; use the database provider’s TLS/SSL connection option for production.
 
@@ -105,20 +102,20 @@ References:
 [5]: https://openweathermap.org/price "OpenWeather Pricing"
 [6]: https://power.larc.nasa.gov/docs/services/api/temporal/hourly/ "NASA POWER Hourly API"
 
-## OpenAI and Crop Health access notes
+## Gemini and Crop Health access notes
 
-The selected production AI provider is OpenAI when `AGROGUARD_AI_PROVIDER=openai`, with `gpt-4o-mini` as the default model and `OPENAI_API_KEY` stored only on the server. The key was validated against OpenAI’s lightweight `/v1/models` endpoint without exposing its value. If Ask AgroGuard displays a provider-configuration message, add these variables under the Vercel project’s Production environment and redeploy:
+The selected production AI provider is Gemini, with `gemini-2.0-flash` as the default model and `GEMINI_API_KEY` stored only on the server. Both Ask AgroGuard and Crop Health use the Gemini OpenAI-compatible endpoint from Vercel. If either feature displays a provider-configuration message, add these variables under the Vercel project’s Production environment and redeploy:
 
 ```text
-OPENAI_API_KEY=your_server_only_key
-AGROGUARD_AI_PROVIDER=openai
-AGROGUARD_AI_MODEL=gpt-4o-mini
+GEMINI_API_KEY=your_server_only_google_ai_studio_key
+AGROGUARD_AI_PROVIDER=gemini
+AGROGUARD_AI_MODEL=gemini-2.0-flash
 ```
 
 Crop Health now uses separate controls for **Upload photo** and **Take photo**. The upload control opens the device gallery/file picker, while the camera control uses the mobile browser’s rear-camera capture hint. Users can also drag and drop an image on desktop. The stable production URL is `https://almizanagroguard.vercel.app/`; older aliases such as `ag4u-sayyeed.vercel.app` may return Vercel `404: NOT_FOUND` and should not be used.
 
 ## Vercel-only production boundary
 
-Production deployment is intended to run from the GitHub repository on Vercel. Vercel invokes the bundled CommonJS functions under `api/`; the Manus preview server is not required to serve the production frontend or public Ask AgroGuard/Crop Health requests. Configure `OPENAI_API_KEY`, `AGROGUARD_AI_PROVIDER=openai`, and `AGROGUARD_AI_MODEL=gpt-4o-mini` in the Vercel Production environment, then redeploy.
+Production deployment runs from the GitHub repository on Vercel. Vercel invokes the bundled CommonJS functions under `api/`; the Manus preview server is not required to serve the production frontend or public Ask AgroGuard/Crop Health requests. Configure `GEMINI_API_KEY`, `AGROGUARD_AI_PROVIDER=gemini`, and `AGROGUARD_AI_MODEL=gemini-2.0-flash` in the Vercel Production environment, then redeploy.
 
 Crop Health returns the AI assessment independently of optional image/database persistence. If legacy storage or database variables are unavailable, the assessment is still returned and the persistence step is skipped with a server-side warning. This prevents a storage integration problem from being shown to farmers as an AI connection failure.

@@ -1,13 +1,5 @@
 const nonEmpty = (value: string | undefined) => value?.trim() || "";
 
-const resolveAiProvider = () => {
-  const configured = nonEmpty(process.env.AGROGUARD_AI_PROVIDER).toLowerCase();
-  if (configured) return configured;
-  if (nonEmpty(process.env.OPENAI_API_KEY)) return "openai";
-  if (nonEmpty(process.env.GEMINI_API_KEY)) return "gemini";
-  return "builtin";
-};
-
 export const ENV = {
   appId: nonEmpty(process.env.VITE_APP_ID),
   cookieSecret: nonEmpty(process.env.JWT_SECRET),
@@ -19,15 +11,15 @@ export const ENV = {
   forgeApiKey: nonEmpty(process.env.BUILT_IN_FORGE_API_KEY),
   openAiApiKey: nonEmpty(process.env.OPENAI_API_KEY),
   geminiApiKey: nonEmpty(process.env.GEMINI_API_KEY),
-  aiProvider: resolveAiProvider(),
+  // AgroGuard production uses Gemini exclusively. This avoids silently
+  // falling back to the legacy Manus or OpenAI paths when a Vercel variable
+  // is omitted or misspelled.
+  aiProvider: "gemini" as const,
   aiModel: nonEmpty(process.env.AGROGUARD_AI_MODEL),
 };
 
-export type AiProvider = "builtin" | "openai" | "gemini";
+export type AiProvider = "gemini";
 
 export function getConfiguredAiProvider(): AiProvider {
-  if (ENV.aiProvider === "openai" || ENV.aiProvider === "gemini") {
-    return ENV.aiProvider;
-  }
-  return "builtin";
+  return "gemini";
 }

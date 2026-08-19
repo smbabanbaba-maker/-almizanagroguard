@@ -212,38 +212,14 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveProvider = () => ENV.aiProvider;
+const resolveProvider = () => "gemini" as const;
 
-const resolveApiUrl = () => {
-  switch (resolveProvider()) {
-    case "openai":
-      return "https://api.openai.com/v1/chat/completions";
-    case "gemini":
-      return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-    default:
-      return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-        ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-        : "https://forge.manus.im/v1/chat/completions";
-  }
-};
+const resolveApiUrl = () =>
+  "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
-const resolveApiKey = () => {
-  switch (resolveProvider()) {
-    case "openai":
-      return ENV.openAiApiKey;
-    case "gemini":
-      return ENV.geminiApiKey;
-    default:
-      return ENV.forgeApiKey;
-  }
-};
+const resolveApiKey = () => ENV.geminiApiKey;
 
-const resolveDefaultModel = () => {
-  if (ENV.aiModel) return ENV.aiModel;
-  if (resolveProvider() === "openai") return "gpt-4o-mini";
-  if (resolveProvider() === "gemini") return "gemini-1.5-flash";
-  return undefined;
-};
+const resolveDefaultModel = () => ENV.aiModel || "gemini-2.0-flash";
 
 const assertApiKey = () => {
   if (!resolveApiKey()) {
@@ -434,11 +410,7 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   const headers: Record<string, string> = {
     "content-type": "application/json",
   };
-  if (resolveProvider() === "gemini") {
-    headers["x-goog-api-key"] = apiKey;
-  } else {
-    headers.authorization = `Bearer ${apiKey}`;
-  }
+  headers["x-goog-api-key"] = apiKey;
 
   const response = await fetchWithBackoff(resolveApiUrl(), {
     method: "POST",
@@ -471,18 +443,9 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const provider = resolveProvider();
-  const url = provider === "openai"
-    ? "https://api.openai.com/v1/models"
-    : provider === "gemini"
-      ? "https://generativelanguage.googleapis.com/v1beta/openai/models"
-      : ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-        ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
-        : "https://forge.manus.im/v1/models";
+  const url = "https://generativelanguage.googleapis.com/v1beta/openai/models";
   const apiKey = resolveApiKey();
-  const headers: Record<string, string> = provider === "gemini"
-    ? { "x-goog-api-key": apiKey }
-    : { authorization: `Bearer ${apiKey}` };
+  const headers: Record<string, string> = { "x-goog-api-key": apiKey };
 
   const response = await fetchWithBackoff(url, { headers });
 
