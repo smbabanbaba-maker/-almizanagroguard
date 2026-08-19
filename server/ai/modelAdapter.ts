@@ -88,7 +88,7 @@ export class BuiltInVisionModelAdapter implements CropVisionModelAdapter {
           },
         },
       },
-      max_tokens: 1100,
+      max_tokens: 1500,
     });
     return { content: response.choices?.[0]?.message?.content };
   }

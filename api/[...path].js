@@ -599,7 +599,7 @@ var BuiltInVisionModelAdapter = class {
           }
         }
       },
-      max_tokens: 1100
+      max_tokens: 1500
     });
     return { content: response.choices?.[0]?.message?.content };
   }
@@ -735,9 +735,12 @@ async function analyzeCropImage(imageDataUrl, cropType = "tomato", adapter = new
   try {
     result = parseCropAnalysis(response.content);
   } catch (error) {
+    const responseText = contentToText(response.content).replace(/\s+/g, " ").trim();
     console.warn("[AgroGuard] Crop analysis model output was incomplete", {
       message: error instanceof Error ? error.message : String(error),
-      contentType: Array.isArray(response.content) ? "array" : typeof response.content
+      contentType: Array.isArray(response.content) ? "array" : typeof response.content,
+      contentLength: responseText.length,
+      preview: responseText.slice(0, 500)
     });
     result = createUnassessedCropAnalysis();
   }

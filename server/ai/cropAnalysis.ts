@@ -4,6 +4,7 @@ import {
 } from "./modelAdapter";
 import {
   CropAnalysis,
+  contentToText,
   createUnassessedCropAnalysis,
   parseCropAnalysis,
 } from "./resultParser";
@@ -62,11 +63,16 @@ export async function analyzeCropImage(
   try {
     result = parseCropAnalysis(response.content);
   } catch (error) {
+    const responseText = contentToText(response.content)
+      .replace(/\s+/g, " ")
+      .trim();
     console.warn("[AgroGuard] Crop analysis model output was incomplete", {
       message: error instanceof Error ? error.message : String(error),
       contentType: Array.isArray(response.content)
         ? "array"
         : typeof response.content,
+      contentLength: responseText.length,
+      preview: responseText.slice(0, 500),
     });
     result = createUnassessedCropAnalysis();
   }

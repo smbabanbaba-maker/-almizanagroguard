@@ -272,3 +272,4 @@
 - [ ] Update Crop Health to present the full assessment clearly on mobile, including plant identity, health status, next steps, and safety guidance
 - [ ] Add regression tests for healthy, suspected-problem, non-plant, and multi-crop model responses
 - [ ] Validate and deploy the expanded Crop Health flow to Vercel
+- [ ] Resolve the live Gemini multi-crop structured-response fallback so clear plant photos return detailed identified-crop guidance rather than the uncertainty fallback
