@@ -244,4 +244,7 @@
 - [x] Expose the bundled CommonJS handler under a Vercel-detected `.js` catch-all with an `api/package.json` CommonJS boundary, then retest `/api/health`
 - [x] Push the latest production API routing fix and validated project state to smbabanbaba-maker/-almizanagroguard main
 - [x] Add a Vercel-detected nested `/api/trpc/[...path].js` wrapper so dotted tRPC procedure paths such as `agroguard.ask` do not return Vercel 404
-- [ ] Diagnose and fix the production Crop Health AI assessment failure shown after a mobile image upload
+- [x] Diagnose and fix the production Crop Health AI assessment failure shown after a mobile image upload (compress mobile uploads before Vercel analysis and surface actionable provider/payload errors)
+- [ ] Fix Ask AgroGuard to handle short inputs like Hi without exposing raw validation JSON
+- [ ] Replace Crop Health generic AI failure display with a clear actionable Vercel/OpenAI error path
+- [ ] Confirm production code paths do not require Manus hosting for Vercel deployment

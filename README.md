@@ -116,3 +116,9 @@ AGROGUARD_AI_MODEL=gpt-4o-mini
 ```
 
 Crop Health now uses separate controls for **Upload photo** and **Take photo**. The upload control opens the device gallery/file picker, while the camera control uses the mobile browser’s rear-camera capture hint. Users can also drag and drop an image on desktop. The stable production URL is `https://almizanagroguard.vercel.app/`; older aliases such as `ag4u-sayyeed.vercel.app` may return Vercel `404: NOT_FOUND` and should not be used.
+
+## Vercel-only production boundary
+
+Production deployment is intended to run from the GitHub repository on Vercel. Vercel invokes the bundled CommonJS functions under `api/`; the Manus preview server is not required to serve the production frontend or public Ask AgroGuard/Crop Health requests. Configure `OPENAI_API_KEY`, `AGROGUARD_AI_PROVIDER=openai`, and `AGROGUARD_AI_MODEL=gpt-4o-mini` in the Vercel Production environment, then redeploy.
+
+Crop Health returns the AI assessment independently of optional image/database persistence. If legacy storage or database variables are unavailable, the assessment is still returned and the persistence step is skipped with a server-side warning. This prevents a storage integration problem from being shown to farmers as an AI connection failure.

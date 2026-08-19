@@ -51,6 +51,24 @@ const navItems: { id: Section; label: string; icon: typeof Leaf }[] = [
 const confidenceLabel = (value: number) =>
   value >= 70 ? "High" : value >= 50 ? "Medium" : "Low";
 
+function humanizeClientError(error: unknown, fallback: string) {
+  const message = error instanceof Error ? error.message.trim() : "";
+  try {
+    const issues = JSON.parse(message) as Array<{
+      code?: string;
+      path?: string[];
+      message?: string;
+    }>;
+    const issue = Array.isArray(issues) ? issues[0] : undefined;
+    if (issue?.code === "too_small" && issue.path?.includes("question")) {
+      return "Please type a short agricultural question first.";
+    }
+  } catch {
+    // tRPC may already provide a normal message; keep the fallback below for empty errors.
+  }
+  return message || fallback;
+}
+
 const weatherSnapshot = {
   location: "Your farm area",
   condition: "Clear skies",
@@ -121,8 +139,10 @@ export default function Home() {
     },
     onError: error =>
       toast.error(
-        error.message ||
+        humanizeClientError(
+          error,
           "We couldn't analyze this image. Please try again with a clear crop photo."
+        )
       ),
   });
   const { data: recentScans = [] } = trpc.cropHealth.recent.useQuery(
@@ -146,7 +166,10 @@ export default function Home() {
         { role: "assistant", content: data.answer },
       ]),
     onError: error => {
-      const message = error.message || "AgroGuard is temporarily unavailable.";
+      const message = humanizeClientError(
+        error,
+        "AgroGuard is temporarily unavailable."
+      );
       toast.error(message);
       setChatMessages(messages => [
         ...messages,

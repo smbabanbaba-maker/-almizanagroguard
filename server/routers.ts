@@ -15,7 +15,7 @@ import {
 } from "./db";
 
 const questionSchema = z.object({
-  question: z.string().trim().min(3).max(1200),
+  question: z.string().trim().min(1).max(1200),
 });
 const imageSchema = z.object({
   imageDataUrl: z.string().min(100).max(12_000_000),
@@ -106,7 +106,7 @@ export const appRouter = router({
         const extension = analysis.mimeType
           .split("/")[1]
           .replace("jpeg", "jpg");
-        let stored;
+        let stored: { key: string; url: string } | undefined;
         try {
           stored = await withTimeout(
             storagePut(
@@ -116,18 +116,28 @@ export const appRouter = router({
             ),
             "Storage upload timeout"
           );
-        } catch {
-          throw new Error(
-            "We couldn't securely save this image. Please try again."
-          );
+        } catch (error) {
+          console.warn("[AgroGuard] Optional image persistence skipped", {
+            message: error instanceof Error ? error.message : String(error),
+          });
         }
-        const saved = await saveCropAnalysis({
-          userId: ctx.user?.id,
-          cropType: input.cropType,
-          imageKey: stored.key,
-          imageUrl: stored.url,
-          result: analysis.result,
-        });
+        let scanId: number | undefined;
+        if (stored) {
+          try {
+            const saved = await saveCropAnalysis({
+              userId: ctx.user?.id,
+              cropType: input.cropType,
+              imageKey: stored.key,
+              imageUrl: stored.url,
+              result: analysis.result,
+            });
+            scanId = saved.scanId;
+          } catch (error) {
+            console.warn("[AgroGuard] Optional analysis persistence skipped", {
+              message: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
         return {
           crop: analysis.result.crop,
           possibleCondition: analysis.result.possible_condition,
@@ -138,7 +148,7 @@ export const appRouter = router({
           expertGuidance: analysis.result.expert_guidance,
           uncertaintyReason: analysis.result.uncertainty_reason,
           confidenceBand: analysis.confidenceBand,
-          scanId: saved.scanId,
+          scanId,
         };
       }),
     recent: protectedProcedure.query(({ ctx }) => getRecentScans(ctx.user.id)),
