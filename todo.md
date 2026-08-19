@@ -267,10 +267,10 @@
 
 ## Multi-crop Crop Health guidance
 
-- [ ] Define a multi-crop Gemini assessment schema that identifies the visible plant and distinguishes healthy, uncertain, and suspected-problem outcomes
-- [ ] Add readable symptoms, practical care steps, prevention actions, and locally verifiable treatment-category guidance without unsafe purchase or dosage claims
-- [ ] Update Crop Health to present the full assessment clearly on mobile, including plant identity, health status, next steps, and safety guidance
-- [ ] Add regression tests for healthy, suspected-problem, non-plant, and multi-crop model responses
-- [ ] Validate and deploy the expanded Crop Health flow to Vercel
-- [ ] Resolve the live Gemini multi-crop structured-response fallback so clear plant photos return detailed identified-crop guidance rather than the uncertainty fallback
-- [ ] Normalize Gemini fractional confidence values into the percentage scale displayed to farmers
+- [x] Define a multi-crop Gemini assessment schema that identifies the visible plant and distinguishes healthy, uncertain, and suspected-problem outcomes
+- [x] Add readable symptoms, practical care steps, prevention actions, and locally verifiable treatment-category guidance without unsafe purchase or dosage claims
+- [x] Update Crop Health to present the full assessment clearly on mobile, including plant identity, health status, next steps, and safety guidance
+- [x] Add regression tests for healthy, suspected-problem, non-plant, and multi-crop model responses
+- [x] Validate and deploy the expanded Crop Health flow to Vercel
+- [x] Resolve the live Gemini multi-crop structured-response fallback so clear plant photos return detailed identified-crop guidance rather than the uncertainty fallback (production tomato analysis returned HTTP 200 with detailed structured guidance)
+- [x] Normalize Gemini fractional confidence values into the percentage scale displayed to farmers (live Gemini values `0.92` and `0.85` display as 92% and 85%)
