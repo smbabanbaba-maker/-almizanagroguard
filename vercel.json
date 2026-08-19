@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "framework": "other",
   "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm build:vercel"
+  "buildCommand": "pnpm build:vercel",
+  "outputDirectory": "public"
 }
