@@ -255,3 +255,6 @@
 - [x] Remove OpenAI-specific production guidance and add secure Gemini API key setup instructions for Vercel
 - [x] Push and verify the Gemini-only Vercel bundle from GitHub main
 - [x] Confirm all non-secret Gemini-only Vercel settings are complete before the user adds GEMINI_API_KEY
+- [ ] Send Gemini OpenAI-compatible requests with the required Bearer authorization header
+- [ ] Convert Gemini upstream authentication errors into safe farmer-facing messages instead of exposing raw API JSON
+- [ ] Deploy and smoke-test Gemini responses for Ask AgroGuard and Crop Health on Vercel

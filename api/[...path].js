@@ -436,9 +436,11 @@ async function invokeLLM(params) {
   }
   const apiKey = resolveApiKey();
   const headers = {
-    "content-type": "application/json"
+    "content-type": "application/json",
+    // Google documents the OpenAI-compatible Gemini endpoint with a standard
+    // Bearer token, not the native Gemini x-goog-api-key header.
+    authorization: `Bearer ${apiKey}`
   };
-  headers["x-goog-api-key"] = apiKey;
   const response = await fetchWithBackoff(resolveApiUrl(), {
     method: "POST",
     headers,
@@ -826,9 +828,11 @@ function friendlyAiError(error) {
     return new Error(
       "This image is too large for secure AI analysis. Please choose a smaller photo."
     );
-  if (/401|403|api key|unauthorized/i.test(message))
+  if (/401|403|api key|unauthorized|missing or invalid authorization/i.test(
+    message
+  ))
     return new Error(
-      "The AI provider key in Vercel was not accepted. Please check the production AI key."
+      "Gemini could not verify the production AI key. Please check GEMINI_API_KEY in Vercel and redeploy."
     );
   if (/400.*(image|input|model|response_format)/i.test(message))
     return new Error(

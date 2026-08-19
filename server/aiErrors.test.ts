@@ -27,8 +27,18 @@ describe("friendly AI error mapping", () => {
 
   it("maps rejected provider keys to a production-key message", () => {
     expect(friendlyAiError(new Error("401 Unauthorized API key")).message).toContain(
-      "AI provider key"
+      "Gemini could not verify"
     );
+  });
+
+  it("does not expose raw Gemini authorization JSON", () => {
+    expect(
+      friendlyAiError(
+        new Error(
+          "LLM invoke failed: 400 Bad Request – Missing or invalid Authorization header"
+        )
+      ).message
+    ).toContain("Gemini could not verify");
   });
 
   it("maps provider image-request validation failures", () => {

@@ -409,8 +409,10 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
   const apiKey = resolveApiKey();
   const headers: Record<string, string> = {
     "content-type": "application/json",
+    // Google documents the OpenAI-compatible Gemini endpoint with a standard
+    // Bearer token, not the native Gemini x-goog-api-key header.
+    authorization: `Bearer ${apiKey}`,
   };
-  headers["x-goog-api-key"] = apiKey;
 
   const response = await fetchWithBackoff(resolveApiUrl(), {
     method: "POST",
@@ -445,7 +447,9 @@ export async function listLLMModels(): Promise<ModelsResponse> {
 
   const url = "https://generativelanguage.googleapis.com/v1beta/openai/models";
   const apiKey = resolveApiKey();
-  const headers: Record<string, string> = { "x-goog-api-key": apiKey };
+  const headers: Record<string, string> = {
+    authorization: `Bearer ${apiKey}`,
+  };
 
   const response = await fetchWithBackoff(url, { headers });
 
