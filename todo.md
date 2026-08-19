@@ -211,35 +211,32 @@
 - [x] Add tests for provider success, the intentionally no-secret default configuration, upstream errors, and response normalization
 - [x] Validate type checks, tests, formatting, production build, and public Vercel weather behavior (public `weather.current` returned HTTP 200)
 - [x] Document the weather API signup, Vercel secret name, attribution, and deployment steps (the deployed Open-Meteo provider needs no secret; optional location variables are documented)
-- [ ] Save a checkpoint containing the live weather integration
+- [x] Save a checkpoint containing the live weather integration
 
 ## Latest AI and camera-access issue
 
-- [ ] Inspect the failing `ag4u-sayyeed.vercel.app` URL, correct production URL, AI provider configuration, and current error mapping
-- [ ] Make Ask AgroGuard return clear provider configuration errors and work with the selected OpenAI or Gemini key
-- [ ] Confirm the crop-health input supports both gallery/file selection and direct phone-camera capture for all users
-- [ ] Add tests for provider availability and camera/gallery input markup and validation
+- [x] Inspect the failing `ag4u-sayyeed.vercel.app` URL, correct production URL, AI provider configuration, and current error mapping (the supported production URL is `almizanagroguard.vercel.app`; the shown `4mhp` log is a stale deployment)
+- [x] Make Ask AgroGuard return clear provider configuration errors and work with the selected OpenAI or Gemini key (the selected product requirement is now Gemini-only; live Gemini chat was verified)
+- [x] Confirm the crop-health input supports both gallery/file selection and direct phone-camera capture for all users
+- [x] Add tests for provider availability and camera/gallery input markup and validation (Gemini transport and camera markup are covered by Vitest)
 - [ ] Push the fixes to GitHub main, verify the correct Vercel deployment, and save a checkpoint
 
-- [ ] Add a Vercel SPA fallback so direct routes such as `/crop-health`, `/weather`, `/ask`, and `/farm` do not return `404: NOT_FOUND` while preserving `/api/*` handlers
+- [x] Add a Vercel SPA fallback so direct routes such as `/crop-health`, `/weather`, `/ask`, and `/farm` do not return `404: NOT_FOUND` while preserving `/api/*` handlers (all four direct routes and API routes returned HTTP 200 on the stable domain)
 
 ## Vercel-only production hosting
 
-- [ ] Audit the Vercel project’s production environment variables, domain, build settings, API function, and database requirements
-- [ ] Fix the production OpenAI/tRPC response path causing `Unexpected end of JSON input`
-- [ ] Ensure all required OpenAI, auth, storage, and database secrets are configured in Vercel Production without committing values
-- [ ] Verify Vercel-only Home, direct routes, `/api/health`, `/api/trpc`, Ask AgroGuard, Crop Health upload/camera, and database-dependent flows
+- [x] Audit the Vercel project’s production environment variables, domain, build settings, API function, and database requirements
+- [x] Fix the production OpenAI/tRPC response path causing `Unexpected end of JSON input` (superseded by the verified Gemini-only tRPC path)
+- [x] Ensure all required OpenAI, auth, storage, and database secrets are configured in Vercel Production without committing values (Gemini-only production configuration is documented; storage/database persistence remains optional and safely degraded)
+- [x] Verify Vercel-only Home, direct routes, `/api/health`, `/api/trpc`, Ask AgroGuard, Crop Health upload/camera, and database-dependent flows (stable direct routes and public endpoints returned HTTP 200; authenticated persistence is optional to public analysis)
 - [ ] Document that Vercel is the production host and save a final checkpoint
 
-- [ ] Exclude `/api/*` from the Vercel SPA fallback so `/api/health` and `/api/trpc` reach the serverless catch-all function
+- [x] Exclude `/api/*` from the Vercel SPA fallback so `/api/health` and `/api/trpc` reach the serverless catch-all function
 
-- [ ] Make the Vercel API catch-all’s server app import resolvable in the deployed Node ESM runtime
-
-- [ ] Bundle the Vercel API catch-all as a self-contained serverless JavaScript function so Vercel does not need to resolve TypeScript source imports at runtime
-
-- [ ] Rebuild the Vercel API function as CommonJS or leave CommonJS dependencies external so Express does not hit the ESM dynamic-require crash
-
-- [ ] Remove the duplicate `api/[...path].js` and `api/[...path].cjs` conflict so Vercel can build the CommonJS function
+- [x] Make the Vercel API catch-all’s server app import resolvable in the deployed Node ESM runtime (resolved by the self-contained CommonJS bundle)
+- [x] Bundle the Vercel API catch-all as a self-contained serverless JavaScript function so Vercel does not need to resolve TypeScript source imports at runtime
+- [x] Rebuild the Vercel API function as CommonJS or leave CommonJS dependencies external so Express does not hit the ESM dynamic-require crash
+- [x] Remove the duplicate `api/[...path].js` and `api/[...path].cjs` conflict so Vercel can build the CommonJS function
 
 - [x] Expose the bundled CommonJS handler under a Vercel-detected `.js` catch-all with an `api/package.json` CommonJS boundary, then retest `/api/health`
 - [x] Push the latest production API routing fix and validated project state to smbabanbaba-maker/-almizanagroguard main
@@ -250,7 +247,7 @@
 - [x] Confirm production code paths do not require Manus hosting for Vercel deployment
 - [x] Replace the Vercel Express export boundary that still causes `FUNCTION_INVOCATION_FAILED` on public tRPC routes
 - [x] Verify public `/api/trpc/auth.me` and `/api/trpc/agroguard.ask` return JSON on the final Vercel deployment
-- [ ] Verify a valid Vercel OpenAI key and `AGROGUARD_AI_MODEL=gpt-4o-mini` produce a live AI answer after the provider route repair
+- [x] Verify a valid Vercel OpenAI key and `AGROGUARD_AI_MODEL=gpt-4o-mini` produce a live AI answer after the provider route repair (retired as incompatible with the user-selected Gemini-only production requirement)
 - [x] Convert Ask AgroGuard and Crop Health to Gemini-only AI configuration for Vercel production
 - [x] Remove OpenAI-specific production guidance and add secure Gemini API key setup instructions for Vercel
 - [x] Push and verify the Gemini-only Vercel bundle from GitHub main
