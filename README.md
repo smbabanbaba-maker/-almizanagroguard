@@ -104,3 +104,15 @@ References:
 [4]: https://www.weatherapi.com/pricing.aspx "WeatherAPI.com Pricing"
 [5]: https://openweathermap.org/price "OpenWeather Pricing"
 [6]: https://power.larc.nasa.gov/docs/services/api/temporal/hourly/ "NASA POWER Hourly API"
+
+## OpenAI and Crop Health access notes
+
+The selected production AI provider is OpenAI when `AGROGUARD_AI_PROVIDER=openai`, with `gpt-4o-mini` as the default model and `OPENAI_API_KEY` stored only on the server. The key was validated against OpenAI’s lightweight `/v1/models` endpoint without exposing its value. If Ask AgroGuard displays a provider-configuration message, add these variables under the Vercel project’s Production environment and redeploy:
+
+```text
+OPENAI_API_KEY=your_server_only_key
+AGROGUARD_AI_PROVIDER=openai
+AGROGUARD_AI_MODEL=gpt-4o-mini
+```
+
+Crop Health now uses separate controls for **Upload photo** and **Take photo**. The upload control opens the device gallery/file picker, while the camera control uses the mobile browser’s rear-camera capture hint. Users can also drag and drop an image on desktop. The stable production URL is `https://almizanagroguard.vercel.app/`; older aliases such as `ag4u-sayyeed.vercel.app` may return Vercel `404: NOT_FOUND` and should not be used.

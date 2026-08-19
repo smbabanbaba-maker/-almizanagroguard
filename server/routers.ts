@@ -151,19 +151,24 @@ export const appRouter = router({
       .input(questionSchema)
       .mutation(async ({ input, ctx }) => {
         checkRateLimit(`ask:${ctx.user?.id ?? ctx.req.ip ?? "guest"}`);
-        const response = await withTimeout(
-          invokeLLM({
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are Ask AgroGuard, a careful agricultural extension assistant. Provide practical general guidance for African smallholder farmers. You may discuss crop care, soil, watering, pests, and climate-smart practices. You must clearly state that text-only guidance is not a disease diagnosis and direct the user to the Crop Health image workflow for image-based assessment. Do not claim to be a licensed agronomist.",
-              },
-              { role: "user", content: input.question },
-            ],
-          }),
-          "AgroGuard chat timeout"
-        );
+        let response;
+        try {
+          response = await withTimeout(
+            invokeLLM({
+              messages: [
+                {
+                  role: "system",
+                  content:
+                    "You are Ask AgroGuard, a careful agricultural extension assistant. Provide practical general guidance for African smallholder farmers. You may discuss crop care, soil, watering, pests, and climate-smart practices. You must clearly state that text-only guidance is not a disease diagnosis and direct the user to the Crop Health image workflow for image-based assessment. Do not claim to be a licensed agronomist.",
+                },
+                { role: "user", content: input.question },
+              ],
+            }),
+            "AgroGuard chat timeout"
+          );
+        } catch (error) {
+          throw friendlyAiError(error);
+        }
         const content = response.choices?.[0]?.message?.content;
         const answer = contentToText(content).trim();
         return {

@@ -110,6 +110,7 @@ export default function Home() {
     },
   ]);
   const fileInput = useRef<HTMLInputElement>(null);
+  const cameraInput = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const analyze = trpc.cropHealth.analyze.useMutation({
@@ -143,8 +144,14 @@ export default function Home() {
         ...messages,
         { role: "assistant", content: data.answer },
       ]),
-    onError: () =>
-      toast.error("AgroGuard is temporarily unavailable. Please try again."),
+    onError: error => {
+      const message = error.message || "AgroGuard is temporarily unavailable.";
+      toast.error(message);
+      setChatMessages(messages => [
+        ...messages,
+        { role: "assistant", content: message },
+      ]);
+    },
   });
 
   const setSection = (id: Section) => {
@@ -305,6 +312,7 @@ export default function Home() {
               setScanFile={setScanFile}
               setScanResult={setScanResult}
               fileInput={fileInput}
+              cameraInput={cameraInput}
               handleFile={handleFile}
               analyzeImage={analyzeImage}
               isAnalyzing={analyze.isPending}
@@ -573,6 +581,7 @@ function CropHealthSection({
   setScanFile,
   setScanResult,
   fileInput,
+  cameraInput,
   handleFile,
   analyzeImage,
   isAnalyzing,
@@ -623,6 +632,7 @@ function CropHealthSection({
                       setScanPreview(null);
                       setScanFile(null);
                       if (fileInput.current) fileInput.current.value = "";
+                      if (cameraInput.current) cameraInput.current.value = "";
                     }}
                   >
                     <X size={15} />
@@ -649,7 +659,7 @@ function CropHealthSection({
                       variant="outline"
                       onClick={event => {
                         event.stopPropagation();
-                        fileInput.current?.click();
+                        cameraInput.current?.click();
                       }}
                     >
                       <Camera size={16} /> Take photo
@@ -660,6 +670,13 @@ function CropHealthSection({
             </div>
             <input
               ref={fileInput}
+              type="file"
+              accept="image/*"
+              className="hidden-input"
+              onChange={event => handleFile(event.target.files?.[0])}
+            />
+            <input
+              ref={cameraInput}
               type="file"
               accept="image/*"
               capture="environment"
