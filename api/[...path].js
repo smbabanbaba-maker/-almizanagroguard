@@ -1425,3 +1425,6 @@ app.get("*", (_req, res) => {
   res.sendFile(indexFile);
 });
 var server_default = app;
+
+// Vercel Node runtime: expose the Express app directly as the CommonJS handler.
+module.exports = module.exports.default;
