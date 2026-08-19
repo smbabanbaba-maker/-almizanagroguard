@@ -240,3 +240,5 @@
 - [ ] Rebuild the Vercel API function as CommonJS or leave CommonJS dependencies external so Express does not hit the ESM dynamic-require crash
 
 - [ ] Remove the duplicate `api/[...path].js` and `api/[...path].cjs` conflict so Vercel can build the CommonJS function
+
+- [ ] Expose the bundled CommonJS handler under a Vercel-detected `.js` catch-all with an `api/package.json` CommonJS boundary, then retest `/api/health`
