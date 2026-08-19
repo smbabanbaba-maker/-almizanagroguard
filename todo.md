@@ -232,3 +232,5 @@
 - [ ] Document that Vercel is the production host and save a final checkpoint
 
 - [ ] Exclude `/api/*` from the Vercel SPA fallback so `/api/health` and `/api/trpc` reach the serverless catch-all function
+
+- [ ] Make the Vercel API catch-all’s server app import resolvable in the deployed Node ESM runtime
