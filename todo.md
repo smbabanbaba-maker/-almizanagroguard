@@ -255,9 +255,9 @@
 - [x] Remove OpenAI-specific production guidance and add secure Gemini API key setup instructions for Vercel
 - [x] Push and verify the Gemini-only Vercel bundle from GitHub main
 - [x] Confirm all non-secret Gemini-only Vercel settings are complete before the user adds GEMINI_API_KEY
-- [ ] Send Gemini OpenAI-compatible requests with the required Bearer authorization header
-- [ ] Convert Gemini upstream authentication errors into safe farmer-facing messages instead of exposing raw API JSON
-- [ ] Deploy and smoke-test Gemini responses for Ask AgroGuard and Crop Health on Vercel
-- [ ] Replace the shut-down `gemini-2.0-flash` configuration with a supported Gemini model and add safe handling for retired-model responses
-- [ ] Record a sanitized Gemini upstream failure reason in Vercel logs so a remaining production 404 can be corrected without exposing secrets to farmers
-- [ ] Give Crop Health a dedicated, bounded Gemini vision timeout that accommodates structured image analysis on Vercel
+- [x] Send Gemini OpenAI-compatible requests with the required Bearer authorization header
+- [x] Convert Gemini upstream authentication errors into safe farmer-facing messages instead of exposing raw API JSON
+- [x] Deploy and smoke-test Gemini responses for Ask AgroGuard and Crop Health on Vercel (Ask AgroGuard and a structured tomato-leaf vision assessment returned HTTP 200 on the stable domain)
+- [x] Replace the shut-down `gemini-2.0-flash` configuration with a supported Gemini model and add safe handling for retired-model responses (provider-directed `gemini-3.6-flash` fallback)
+- [x] Record a sanitized Gemini upstream failure reason in Vercel logs so a remaining production 404 can be corrected without exposing secrets to farmers
+- [x] Give Crop Health a dedicated, bounded Gemini vision timeout that accommodates structured image analysis on Vercel
