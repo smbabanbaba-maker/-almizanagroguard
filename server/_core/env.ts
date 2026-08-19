@@ -1,5 +1,13 @@
 const nonEmpty = (value: string | undefined) => value?.trim() || "";
 
+const resolveAiProvider = () => {
+  const configured = nonEmpty(process.env.AGROGUARD_AI_PROVIDER).toLowerCase();
+  if (configured) return configured;
+  if (nonEmpty(process.env.OPENAI_API_KEY)) return "openai";
+  if (nonEmpty(process.env.GEMINI_API_KEY)) return "gemini";
+  return "builtin";
+};
+
 export const ENV = {
   appId: nonEmpty(process.env.VITE_APP_ID),
   cookieSecret: nonEmpty(process.env.JWT_SECRET),
@@ -11,7 +19,7 @@ export const ENV = {
   forgeApiKey: nonEmpty(process.env.BUILT_IN_FORGE_API_KEY),
   openAiApiKey: nonEmpty(process.env.OPENAI_API_KEY),
   geminiApiKey: nonEmpty(process.env.GEMINI_API_KEY),
-  aiProvider: nonEmpty(process.env.AGROGUARD_AI_PROVIDER).toLowerCase() || "builtin",
+  aiProvider: resolveAiProvider(),
   aiModel: nonEmpty(process.env.AGROGUARD_AI_MODEL),
 };
 

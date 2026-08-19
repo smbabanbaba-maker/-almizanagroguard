@@ -20,6 +20,22 @@ describe("AI provider configuration", () => {
     expect(getConfiguredAiProvider()).toBe(provider);
   });
 
+  it("defaults to OpenAI when an OpenAI key is present", async () => {
+    delete process.env.AGROGUARD_AI_PROVIDER;
+    process.env.OPENAI_API_KEY = "test-openai-key";
+    process.env.GEMINI_API_KEY = "";
+    const { getConfiguredAiProvider } = await import("./_core/env");
+    expect(getConfiguredAiProvider()).toBe("openai");
+  });
+
+  it("defaults to Gemini when only a Gemini key is present", async () => {
+    delete process.env.AGROGUARD_AI_PROVIDER;
+    process.env.OPENAI_API_KEY = "";
+    process.env.GEMINI_API_KEY = "test-gemini-key";
+    const { getConfiguredAiProvider } = await import("./_core/env");
+    expect(getConfiguredAiProvider()).toBe("gemini");
+  });
+
   it("fails clearly when the selected provider has no key", async () => {
     process.env.AGROGUARD_AI_PROVIDER = "openai";
     process.env.OPENAI_API_KEY = "";
