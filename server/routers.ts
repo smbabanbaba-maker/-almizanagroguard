@@ -21,6 +21,7 @@ const imageSchema = z.object({
   imageDataUrl: z.string().min(100).max(12_000_000),
   cropType: z.string().trim().min(1).max(80).default("tomato"),
 });
+export const CROP_ANALYSIS_TIMEOUT_MS = 90_000;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 function checkRateLimit(key: string, limit = 8) {
   const now = Date.now();
@@ -103,7 +104,8 @@ export const appRouter = router({
         try {
           analysis = await withTimeout(
             analyzeCropImage(input.imageDataUrl, input.cropType),
-            "AI analysis timeout"
+            "AI analysis timeout",
+            CROP_ANALYSIS_TIMEOUT_MS
           );
         } catch (error) {
           console.error("[AgroGuard] Crop analysis failed", {

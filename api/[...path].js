@@ -572,7 +572,8 @@ var BuiltInVisionModelAdapter = class {
             additionalProperties: false
           }
         }
-      }
+      },
+      max_tokens: 700
     });
     return { content: response.choices?.[0]?.message?.content };
   }
@@ -809,6 +810,7 @@ var imageSchema = import_zod3.z.object({
   imageDataUrl: import_zod3.z.string().min(100).max(12e6),
   cropType: import_zod3.z.string().trim().min(1).max(80).default("tomato")
 });
+var CROP_ANALYSIS_TIMEOUT_MS = 9e4;
 var rateBuckets = /* @__PURE__ */ new Map();
 function checkRateLimit(key, limit = 8) {
   const now = Date.now();
@@ -882,7 +884,8 @@ var appRouter = router({
       try {
         analysis = await withTimeout(
           analyzeCropImage(input.imageDataUrl, input.cropType),
-          "AI analysis timeout"
+          "AI analysis timeout",
+          CROP_ANALYSIS_TIMEOUT_MS
         );
       } catch (error) {
         console.error("[AgroGuard] Crop analysis failed", {

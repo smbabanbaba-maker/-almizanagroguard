@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { friendlyAiError } from "./routers";
+import { CROP_ANALYSIS_TIMEOUT_MS, friendlyAiError } from "./routers";
 
 describe("friendly AI error mapping", () => {
+  it("gives structured crop vision analysis a dedicated Vercel-safe response window", () => {
+    expect(CROP_ANALYSIS_TIMEOUT_MS).toBe(90_000);
+  });
+
   it("maps timeout errors to a retryable crop-health message", () => {
     expect(friendlyAiError(new Error("AI analysis timeout")).message).toContain(
       "took too long to respond"

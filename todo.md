@@ -260,3 +260,4 @@
 - [ ] Deploy and smoke-test Gemini responses for Ask AgroGuard and Crop Health on Vercel
 - [ ] Replace the shut-down `gemini-2.0-flash` configuration with a supported Gemini model and add safe handling for retired-model responses
 - [ ] Record a sanitized Gemini upstream failure reason in Vercel logs so a remaining production 404 can be corrected without exposing secrets to farmers
+- [ ] Give Crop Health a dedicated, bounded Gemini vision timeout that accommodates structured image analysis on Vercel
