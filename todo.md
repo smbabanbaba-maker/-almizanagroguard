@@ -261,6 +261,6 @@
 
 ## Crop Health invalid-analysis repair
 
-- [ ] Inspect the live Crop Health invalid-analysis response caused after a successful image upload
-- [ ] Harden Gemini structured-result parsing and convert malformed model output into an actionable farmer-safe result
-- [ ] Add regression coverage for Gemini vision content variants and deploy the repaired Crop Health flow to Vercel
+- [x] Inspect the live Crop Health invalid-analysis response caused after a successful image upload
+- [x] Harden Gemini structured-result parsing and convert malformed model output into an actionable farmer-safe result
+- [x] Add regression coverage for Gemini vision content variants and deploy the repaired Crop Health flow to Vercel (the user-provided image returned HTTP 200 with a structured low-confidence assessment)
