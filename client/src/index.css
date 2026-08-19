@@ -211,6 +211,13 @@ button {
 .brand-mark span {
   transform: rotate(8deg);
 }
+.brand-logo {
+  width: 27px;
+  height: 27px;
+  object-fit: contain;
+  transform: rotate(8deg);
+  filter: drop-shadow(0 2px 4px rgba(8, 35, 27, 0.24));
+}
 .brand-spark {
   position: absolute;
   width: 7px;
@@ -355,6 +362,21 @@ button {
   position: sticky;
   top: 0;
   z-index: 40;
+}
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.topbar-brand .brand-mark {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+}
+.topbar-brand .brand-logo {
+  width: 25px;
+  height: 25px;
 }
 .topbar h1 {
   font-size: 17px;
@@ -1480,7 +1502,7 @@ button {
     z-index: 60;
   }
   .topbar {
-    height: 76px;
+    height: 70px;
     padding: 0 18px;
   }
   .mobile-menu {

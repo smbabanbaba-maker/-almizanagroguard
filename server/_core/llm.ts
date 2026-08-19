@@ -212,14 +212,42 @@ const normalizeToolChoice = (
   return toolChoice;
 };
 
-const resolveApiUrl = () =>
-  ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
-    : "https://forge.manus.im/v1/chat/completions";
+const resolveProvider = () => ENV.aiProvider;
+
+const resolveApiUrl = () => {
+  switch (resolveProvider()) {
+    case "openai":
+      return "https://api.openai.com/v1/chat/completions";
+    case "gemini":
+      return "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+    default:
+      return ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+        ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
+        : "https://forge.manus.im/v1/chat/completions";
+  }
+};
+
+const resolveApiKey = () => {
+  switch (resolveProvider()) {
+    case "openai":
+      return ENV.openAiApiKey;
+    case "gemini":
+      return ENV.geminiApiKey;
+    default:
+      return ENV.forgeApiKey;
+  }
+};
+
+const resolveDefaultModel = () => {
+  if (ENV.aiModel) return ENV.aiModel;
+  if (resolveProvider() === "openai") return "gpt-4o-mini";
+  if (resolveProvider() === "gemini") return "gemini-1.5-flash";
+  return undefined;
+};
 
 const assertApiKey = () => {
-  if (!ENV.forgeApiKey) {
-    throw new Error("OPENAI_API_KEY is not configured");
+  if (!resolveApiKey()) {
+    throw new Error(`${resolveProvider()} AI provider is not configured`);
   }
 };
 
@@ -362,8 +390,9 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     messages: messages.map(normalizeMessage),
   };
 
-  if (model) {
-    payload.model = model;
+  const resolvedModel = model ?? resolveDefaultModel();
+  if (resolvedModel) {
+    payload.model = resolvedModel;
   }
 
   if (tools && tools.length > 0) {
@@ -401,12 +430,19 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
     payload.response_format = normalizedResponseFormat;
   }
 
+  const apiKey = resolveApiKey();
+  const headers: Record<string, string> = {
+    "content-type": "application/json",
+  };
+  if (resolveProvider() === "gemini") {
+    headers["x-goog-api-key"] = apiKey;
+  } else {
+    headers.authorization = `Bearer ${apiKey}`;
+  }
+
   const response = await fetchWithBackoff(resolveApiUrl(), {
     method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${ENV.forgeApiKey}`,
-    },
+    headers,
     body: JSON.stringify(payload),
   });
 
@@ -435,13 +471,20 @@ export type ModelsResponse = {
 export async function listLLMModels(): Promise<ModelsResponse> {
   assertApiKey();
 
-  const url = ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
-    ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
-    : "https://forge.manus.im/v1/models";
+  const provider = resolveProvider();
+  const url = provider === "openai"
+    ? "https://api.openai.com/v1/models"
+    : provider === "gemini"
+      ? "https://generativelanguage.googleapis.com/v1beta/openai/models"
+      : ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
+        ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/models`
+        : "https://forge.manus.im/v1/models";
+  const apiKey = resolveApiKey();
+  const headers: Record<string, string> = provider === "gemini"
+    ? { "x-goog-api-key": apiKey }
+    : { authorization: `Bearer ${apiKey}` };
 
-  const response = await fetchWithBackoff(url, {
-    headers: { authorization: `Bearer ${ENV.forgeApiKey}` },
-  });
+  const response = await fetchWithBackoff(url, { headers });
 
   if (!response.ok) {
     const errorText = await response.text();

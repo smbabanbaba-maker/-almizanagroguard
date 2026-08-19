@@ -52,7 +52,7 @@ async function withTimeout<T>(
     if (timer) clearTimeout(timer);
   }
 }
-function friendlyAiError(error: unknown) {
+export function friendlyAiError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (message.includes("timeout"))
     return new Error(

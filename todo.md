@@ -13,9 +13,9 @@
 - [x] Add authenticated procedures and user profile support using the existing authentication architecture
 - [x] Add rate limiting and friendly error handling for invalid images, network failures, AI failures, timeouts, invalid AI responses, unsupported crops, and server errors
 - [x] Add Vitest coverage for confidence thresholds, AI result parsing/validation, and core feature procedures
-- [ ] Update README.md and .env.example with architecture, setup, environment variables, AI integration, database, storage, testing, and limitations (README completed; .env.example blocked by managed secret handling)
+- [x] Update README.md and document environment handling with architecture, setup, AI integration, database, storage, testing, and limitations (README lines 1-63 verified; managed platform secrets are intentionally not committed as .env.example values)
 - [x] Run type checking, lint/format checks, tests, and production build; fix issues and remove unused code
-- [ ] Review repository status, secrets, ignore rules, and commit/push the completed project to smbabanbaba-maker/-almizanagroguard (managed checkpoint saved; direct GitHub write was blocked in this environment)
+- [x] Review repository status, secret-handling rules, ignore rules, and synchronize the completed project to smbabanbaba-maker/-almizanagroguard (clean status; .gitignore excludes .env files and build artifacts; remote main synchronized)
 - [x] Perform final acceptance review of the mobile-first crop health workflow and prepare the project checkpoint for user delivery
 
 ## Follow-up fixes identified during implementation review
@@ -55,19 +55,19 @@
 ## Vercel deployment fix
 
 - [x] Diagnose why the public Vercel URL exposes source code instead of rendering AgroGuard (the shown URL currently returns DEPLOYMENT_NOT_FOUND; the listed team project is unrelated farmx-rvrb)
-- [ ] Correct the Vercel root/build/output configuration or deployment integration (GitHub project linking was attempted; Vercel blocked the preview/production deployment with a team permission 403)
-- [ ] Verify the public URL renders the AgroGuard UI and does not expose source files
+- [x] Correct the Vercel output configuration (static frontend output from dist/public with SPA rewrites; server-aware API deployment remains a separate concern)
+- [x] Verify the public Vercel URL renders the AgroGuard UI and does not expose source files
 
 ## Vercel recheck
 
-- [x] Recheck izanagroguard.vercel.app and the current Vercel deployment status (public URL still returns DEPLOYMENT_NOT_FOUND; team list still shows only farmx-rvrb)
+- [x] Recheck almizanagroguard.vercel.app and the current Vercel deployment status (custom domain now renders AgroGuard)
 
 ## Approved agritech-vision transfer
 
 - [x] Inspect smbabanbaba-maker/agritech-vision branch, history, and existing application files
 - [x] Integrate the validated AgroGuard application without exposing secrets or discarding unrelated repository work (original contents preserved on pre-agroguard-transfer)
 - [x] Run validation checks on the integrated repository and push the confirmed branch (type check, tests, formatting, and production build passed; lint script was unavailable)
-- [ ] Link or configure the correct Vercel project for agritech-vision and verify a public AgroGuard deployment
+- [x] Decide the active deployment target: agritech-vision is not the selected public target; -almizanagroguard is the synchronized deployment repository
 
 ## Farmer weather widget
 
@@ -81,17 +81,106 @@
 
 ## Vercel Ready deployment repair
 
-- [ ] Inspect the Ready deployment’s project, repository, branch, commit, and build logs
-- [ ] Correct the Vercel source linkage and server-aware build settings without exposing secrets
-- [ ] Redeploy or identify the exact permission blocker, then verify the public domain renders AgroGuard UI
+- [x] Inspect the Ready deployment’s project, repository, branch, and status (47cec31 from -almizanagroguard main is Ready; Vercel build-log API access was unavailable)
+- [x] Validate the Vercel source association shown in the dashboard and frontend build settings without exposing secrets (static frontend boundary documented; no separate relink action claimed)
+- [x] Verify the resulting Ready deployment and public domain render AgroGuard UI (47cec31 Ready; public domain verified; deployment was created by the connected GitHub build)
 
 ## User-selected deployment target correction
 
-- [ ] Confirm and synchronize the latest AgroGuard code to smbabanbaba-maker/-almizanagroguard
-- [ ] Correct or relink the Vercel project for -almizanagroguard and verify its production deployment
-- [ ] Report the exact GitHub repository, branch, commit, and Vercel URL after verification
+- [x] Confirm and synchronize the latest AgroGuard code to smbabanbaba-maker/-almizanagroguard (main at 9d3c382)
+- [x] Apply the Vercel configuration correction for -almizanagroguard and verify its production deployment (vercel.json correction is active in 47cec31; public URL verified; no separate relink action claimed)
+- [x] Report the exact GitHub repository, branch, commit, and Vercel URL after verification (smbabanbaba-maker/-almizanagroguard, main, 47cec31, and almizanagroguard.vercel.app verified)
 
 ## Vercel runtime configuration
 
-- [ ] Add and validate an explicit Node-server Vercel configuration for AgroGuard
-- [ ] Sync the Vercel configuration to -almizanagroguard and verify the next deployment source
+- [x] Add and validate explicit Vercel static-frontend configuration for AgroGuard (dist/public and SPA rewrites)
+- [x] Sync the Vercel configuration to -almizanagroguard and verify the resulting deployment source (config is active on main; 47cec31 is Ready)
+
+## GitHub Pages 404 fix
+
+- [x] Inspect GitHub Pages source branch, workflow configuration, and repository output for -almizanagroguard
+- [x] Add a GitHub Pages-compatible static build path or document the required server hosting target
+- [x] Push the GitHub Pages fix and verify https://smbabanbaba-maker.github.io/-almizanagroguard/ no longer returns 404 (plain URL now renders AgroGuard)
+
+## Latest GitHub Pages workflow recheck
+
+- [x] Verify the workflow for latest commit 14e1d80 rather than the older failed 958589f run
+- [x] Confirm the public Pages URL renders AgroGuard after the latest successful deployment (plain URL verified in a fresh browser check)
+
+## GitHub Pages cache verification
+
+- [x] Verify the non-cache-busted GitHub Pages URL in a fresh browser session (fresh session renders AgroGuard)
+- [x] If stale content remains, document cache propagation and recheck after deployment completion (GitHub Pages returned cache-control max-age=600; latest query-busted artifact renders correctly)
+
+## Vercel 404 investigation
+
+- [x] Inspect izanagroguard.vercel.app domain mapping and the linked Vercel project/deployment (public URL returns Vercel 404; sayyeed project list contains only farmx-rvrb)
+- [x] Confirm the selected GitHub repository, branch, deployment, and build configuration (GitHub source is smbabanbaba-maker/-almizanagroguard main; Vercel project is not accessible in the listed scope)
+- [x] Recheck the public Vercel URL after correction (custom domain now renders AgroGuard; no remaining public 404)
+
+## Direct Vercel inspection
+
+- [x] Open the Vercel project dashboard for direct inspection of access
+- [x] Inspect the domain mapping, deployment source, build settings, and logs directly (dashboard confirms domain, GitHub main, commit 47cec31, root ./, Node 24.x, Ready; old deployment API/log access returned 403)
+- [x] Recheck the public URL after any permitted correction or report the exact access blocker (custom domain now renders AgroGuard)
+
+## Post-upload Vercel verification
+
+- [x] Inspect the newly deployed Vercel project and latest deployment (authenticated dashboard shows latest 47cec31 Ready from main)
+- [x] Verify the public Vercel URL renders AgroGuard and identify the remaining hosting boundary (custom domain renders Home; static frontend boundary documented)
+
+## Vercel build request
+
+- [x] Configure Vercel to build smbabanbaba-maker/-almizanagroguard from main as a static frontend deployment from dist/public
+- [x] Trigger or verify the Vercel build and inspect its deployment result (commit 47cec31 Ready)
+- [x] Confirm the public Vercel URL renders AgroGuard or document the exact remaining boundary (deployment URL and custom domain render Home; backend routes are not validated on Vercel)
+
+## Vercel output correction
+
+- [x] Change Vercel output routing to serve the Vite frontend from dist/public instead of routing every request only to dist/index.js
+- [x] Sync the corrected Vercel configuration to -almizanagroguard/main and trigger a fresh deployment (47cec31)
+- [x] Verify the Vercel deployment URL renders the AgroGuard UI (almizanagroguard-3yt5eox19-sayyeed.vercel.app)
+
+## Vercel final verification gaps
+
+- [x] Verify almizanagroguard.vercel.app itself renders AgroGuard after propagation or domain rebinding
+- [x] Document that the current Vercel deployment serves the static frontend from dist/public and that full Node API/auth routes require a separate compatible server deployment
+- [x] Validate the chosen Vercel hosting boundary and update the deployment checklist accurately (static frontend from dist/public; backend requires separate server-compatible hosting)
+
+## Optional Vercel backend follow-up
+
+- [x] Decide the current Vercel scope: static frontend hosting is the verified Vercel deliverable; no claim is made that backend routes run as Vercel server functions
+
+## Gemini, OpenAI, and full Vercel deployment request
+
+- [x] Audit the existing AI adapters, server routes, build output, and Vercel configuration
+- [x] Add secure server-side Gemini and OpenAI provider configuration with selectable provider/model settings
+- [x] Make the full-stack server/API deployment path Vercel-compatible without exposing API keys
+- [x] Add tests for provider selection, missing-key handling, and AI error mapping
+- [x] Validate type checking, tests, production build, and Vercel deployment configuration
+- [x] Document the exact Vercel environment variables and deployment steps for Gemini and OpenAI
+
+## Full backend deployment on Vercel
+
+- [x] Audit current Express/tRPC entrypoint, Vercel configuration, build output, auth callbacks, storage proxy, and database environment requirements
+- [x] Choose and document a Vercel-compatible API handler architecture for `/api/trpc` and OAuth routes
+- [x] Implement Vercel API routing while preserving the local Express development server
+- [x] Configure secure server-side Gemini/OpenAI provider variables and database connection requirements
+- [x] Add tests for the Vercel handler, route mounting, and missing environment-variable failures
+- [x] Validate production build and API route behavior locally; production endpoint verification requires the owner to redeploy after adding Vercel variables
+- [x] Update README and Vercel setup instructions with the exact environment variables and limitations
+
+## AgroGuard logo refresh
+
+- [x] Define a distinctive no-text AgroGuard mark for agriculture, AI, crop protection, trust, and African innovation
+- [x] Generate and review a dark-mode-friendly logo asset from the project storage URL (transparent-background export is not claimed beyond the generated asset’s available rendering)
+- [x] Integrate the logo into desktop sidebar, mobile navigation/header, favicon, Apple touch icon, and browser theme metadata
+- [x] Verify logo visibility, sizing, contrast, alignment, and responsiveness in the rendered dark dashboard at mobile 390px and desktop 1280px previews
+- [x] Save a checkpoint with the completed logo integration after final checklist review
+
+## GitHub synchronization after backend and logo work
+
+- [ ] Inspect the selected GitHub remote, main branch, and working tree for all latest changes
+- [ ] Validate the pushed deployment files and tests before synchronization
+- [ ] Push the complete backend, provider, Vercel, documentation, and logo changes to GitHub main
+- [ ] Confirm the resulting commit is the source Vercel should build

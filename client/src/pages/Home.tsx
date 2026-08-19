@@ -62,11 +62,12 @@ const weatherSnapshot = {
   source: "Local preview · connect a live provider for updates",
 };
 
+const AGROGUARD_LOGO_SRC = "/manus-storage/agroguard-logo_ec4d5c09.png";
+
 function AppMark() {
   return (
-    <div className="brand-mark">
-      <span>AG</span>
-      <div className="brand-spark" />
+    <div className="brand-mark" aria-hidden="true">
+      <img src={AGROGUARD_LOGO_SRC} alt="" className="brand-logo" />
     </div>
   );
 }
@@ -240,11 +241,14 @@ export default function Home() {
           >
             <Menu size={21} />
           </button>
-          <div>
-            <p className="eyebrow">AL-MIZAN AI AGROGUARD</p>
-            <h1>
-              {navItems.find(item => item.id === current)?.label || "Home"}
-            </h1>
+          <div className="topbar-brand">
+            <AppMark />
+            <div>
+              <p className="eyebrow">AL-MIZAN AI AGROGUARD</p>
+              <h1>
+                {navItems.find(item => item.id === current)?.label || "Home"}
+              </h1>
+            </div>
           </div>
           <div className="topbar-right">
             <button
