@@ -180,7 +180,45 @@
 
 ## GitHub synchronization after backend and logo work
 
-- [ ] Inspect the selected GitHub remote, main branch, and working tree for all latest changes
-- [ ] Validate the pushed deployment files and tests before synchronization
-- [ ] Push the complete backend, provider, Vercel, documentation, and logo changes to GitHub main
-- [ ] Confirm the resulting commit is the source Vercel should build
+- [x] Inspect the selected GitHub remote, main branch, and working tree for all latest changes
+- [x] Validate the pushed deployment files and tests before synchronization
+- [x] Push the complete backend, provider, Vercel, documentation, and logo changes to GitHub main
+- [x] Confirm the resulting commit is the source Vercel should build (main at 91e7f0a)
+
+## Latest Vercel 404 report
+
+- [x] Inspect the failing project URL, Vercel project mapping, and latest deployment status
+- [x] Compare the mapped deployment with GitHub main commit 91e7f0a and the verified deployment URL
+- [x] Apply or document the required domain, project, or deployment correction (removed invalid framework value, set outputDirectory to public, added API catch-all, and pushed d347a07)
+- [x] Verify the correct public URL and save the corrected deployment checkpoint (almizanagroguard.vercel.app renders AgroGuard; agroguard-swart is stale)
+
+- [x] Save a new checkpoint after the d347a07 Vercel 404 correction and record its version in the deployment findings
+
+## Public logo and API provider request
+
+- [x] Audit why the generated logo URL is broken on the public Vercel deployment (the `/manus-storage` image path was unavailable on Vercel)
+- [x] Replace the broken logo reference with a Vercel-accessible public asset URL and update all logo placements (inline SVG mark, public SVG favicon, and Apple touch icon)
+- [x] Research practical weather and agricultural API providers, including free-tier availability and African coverage (WeatherAPI.com, OpenWeather, and NASA POWER)
+- [x] Add provider/source instructions and required Vercel environment variables to the project documentation
+- [x] Validate the logo asset, production build, and public Vercel deployment after the fix (commit 12b3370; unique and stable URLs verified)
+- [x] Save a checkpoint with the corrected public logo and API guidance after final checklist review
+
+## Live weather integration
+
+- [ ] Audit the current weather UI, server router, environment configuration, and provider boundary
+- [ ] Implement a secure server-side weather provider endpoint with normalized response data
+- [ ] Connect Home and Weather / Climate dashboard views to live weather data with loading, error, and fallback states
+- [ ] Add tests for provider success, missing-key configuration, upstream errors, and response normalization
+- [ ] Validate type checks, tests, formatting, production build, and public Vercel weather behavior
+- [ ] Document the weather API signup, Vercel secret name, attribution, and deployment steps
+- [ ] Save a checkpoint containing the live weather integration
+
+## Latest AI and camera-access issue
+
+- [ ] Inspect the failing `ag4u-sayyeed.vercel.app` URL, correct production URL, AI provider configuration, and current error mapping
+- [ ] Make Ask AgroGuard return clear provider configuration errors and work with the selected OpenAI or Gemini key
+- [ ] Confirm the crop-health input supports both gallery/file selection and direct phone-camera capture for all users
+- [ ] Add tests for provider availability and camera/gallery input markup and validation
+- [ ] Push the fixes to GitHub main, verify the correct Vercel deployment, and save a checkpoint
+
+- [ ] Add a Vercel SPA fallback so direct routes such as `/crop-health`, `/weather`, `/ask`, and `/farm` do not return `404: NOT_FOUND` while preserving `/api/*` handlers
