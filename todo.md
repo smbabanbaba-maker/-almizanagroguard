@@ -238,3 +238,5 @@
 - [ ] Bundle the Vercel API catch-all as a self-contained serverless JavaScript function so Vercel does not need to resolve TypeScript source imports at runtime
 
 - [ ] Rebuild the Vercel API function as CommonJS or leave CommonJS dependencies external so Express does not hit the ESM dynamic-require crash
+
+- [ ] Remove the duplicate `api/[...path].js` and `api/[...path].cjs` conflict so Vercel can build the CommonJS function
