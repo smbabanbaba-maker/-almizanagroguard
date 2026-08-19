@@ -62,12 +62,29 @@ const weatherSnapshot = {
   source: "Local preview · connect a live provider for updates",
 };
 
-const AGROGUARD_LOGO_SRC = "/manus-storage/agroguard-logo_ec4d5c09.png";
-
 function AppMark() {
   return (
     <div className="brand-mark" aria-hidden="true">
-      <img src={AGROGUARD_LOGO_SRC} alt="" className="brand-logo" />
+      <svg className="brand-logo" viewBox="0 0 128 128" focusable="false">
+        <rect width="128" height="128" rx="28" fill="#c7ed78" />
+        <path
+          d="M64 18 101 31v27c0 24-15 41-37 51C42 99 27 82 27 58V31l37-13Z"
+          fill="#0d4f43"
+        />
+        <path
+          d="M64 29 90 38v19c0 17-10 29-26 37-16-8-26-20-26-37V38l26-9Z"
+          fill="#a8d95d"
+        />
+        <path
+          d="M42 73c12-1 28-8 39-24M42 73c2-10 7-17 16-22M42 73c4 5 10 8 17 9"
+          fill="none"
+          stroke="#0d4f43"
+          strokeWidth="5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="82" cy="45" r="4" fill="#0d4f43" />
+      </svg>
     </div>
   );
 }

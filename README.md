@@ -92,3 +92,15 @@ References:
 [1]: https://vercel.com/docs/environment-variables "Vercel Environment Variables"
 [2]: https://vercel.com/docs/frameworks/backend/express "Express on Vercel"
 [3]: https://vercel.com/docs/functions/runtimes/node-js "Vercel Node.js Runtime"
+
+## Weather and agriculture API options
+
+The current Weather / Climate interface intentionally uses a clearly labeled preview until a trusted provider is configured. For the first live integration, WeatherAPI.com is a practical low-volume option: its current free plan lists 100,000 calls per month and a 3-day forecast, with limited alerts and air quality.[4] OpenWeather is a strong alternative when global latitude/longitude coverage, geocoding, air pollution, and richer timeline features are important; its current One Call 4.0 page advertises the first 1,000 calls per day free.[5] NASA POWER is useful for longer-term climate, solar, and meteorological indicators and is globally available, but it is better treated as a climate-data complement than as a minute-to-minute alert service.[6]
+
+Keep weather requests server-side. Add only the provider key to Vercel Environment Variables, then have a server procedure request the provider and return a normalized weather snapshot to the React client. Do not put `WEATHER_API_KEY`, `OPENWEATHER_API_KEY`, or any other provider secret in a `VITE_` variable. Check the provider’s attribution, commercial-use, and rate-limit terms before a public launch.
+
+References:
+
+[4]: https://www.weatherapi.com/pricing.aspx "WeatherAPI.com Pricing"
+[5]: https://openweathermap.org/price "OpenWeather Pricing"
+[6]: https://power.larc.nasa.gov/docs/services/api/temporal/hourly/ "NASA POWER Hourly API"
