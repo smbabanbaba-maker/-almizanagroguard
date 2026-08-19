@@ -309,7 +309,7 @@ var resolveDefaultModel = () => {
   if (configuredModel?.startsWith("gemini-") && !RETIRED_GEMINI_MODELS.has(configuredModel)) {
     return configuredModel;
   }
-  return "gemini-2.5-flash";
+  return "gemini-3.6-flash";
 };
 var assertApiKey = () => {
   if (!resolveApiKey()) {

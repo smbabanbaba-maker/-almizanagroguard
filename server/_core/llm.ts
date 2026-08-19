@@ -234,7 +234,7 @@ const resolveDefaultModel = () => {
   ) {
     return configuredModel;
   }
-  return "gemini-2.5-flash";
+  return "gemini-3.6-flash";
 };
 
 const assertApiKey = () => {

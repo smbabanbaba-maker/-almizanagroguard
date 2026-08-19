@@ -41,7 +41,7 @@ describe("Gemini OpenAI-compatible authentication", () => {
     );
   });
 
-  it("falls back to Gemini 2.5 Flash when Vercel still has the retired 2.0 model", async () => {
+  it("falls back to Gemini 3.6 Flash when Vercel still has the retired 2.0 model", async () => {
     process.env.GEMINI_API_KEY = "gemini-test-key";
     process.env.AGROGUARD_AI_MODEL = "gemini-2.0-flash";
     const fetchMock = vi.fn().mockResolvedValue(
@@ -56,7 +56,7 @@ describe("Gemini OpenAI-compatible authentication", () => {
     await invokeLLM({ messages: [{ role: "user", content: "Hello" }] });
 
     const payload = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
-    expect(payload.model).toBe("gemini-2.5-flash");
+    expect(payload.model).toBe("gemini-3.6-flash");
   });
 
   it("does not pass a stale OpenAI model override to the Gemini-only endpoint", async () => {
@@ -74,7 +74,7 @@ describe("Gemini OpenAI-compatible authentication", () => {
     await invokeLLM({ messages: [{ role: "user", content: "Hello" }] });
 
     const payload = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string);
-    expect(payload.model).toBe("gemini-2.5-flash");
+    expect(payload.model).toBe("gemini-3.6-flash");
   });
 
   it("does not retry a Gemini 404 and logs only a sanitized upstream reason", async () => {
@@ -85,7 +85,7 @@ describe("Gemini OpenAI-compatible authentication", () => {
         JSON.stringify({
           error: {
             message:
-              "models/gemini-2.5-flash is not found?key=secret-value",
+              "models/gemini-3.6-flash is not found?key=secret-value",
           },
         }),
         { status: 404, statusText: "Not Found" }
@@ -104,7 +104,7 @@ describe("Gemini OpenAI-compatible authentication", () => {
       "[Gemini] upstream request failed",
       expect.objectContaining({
         status: 404,
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         reason: expect.not.stringContaining("secret-value"),
       })
     );
