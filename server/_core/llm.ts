@@ -220,7 +220,7 @@ const resolveApiUrl = () =>
 const resolveApiKey = () => ENV.geminiApiKey;
 
 // Gemini 2.0 Flash is shut down. Keep a defensive compatibility fallback so a
-// stale Vercel environment value cannot take the farmer-facing AI offline.
+// stale Vercel environment value cannot take the Gemini-only farmer AI offline.
 const RETIRED_GEMINI_MODELS = new Set([
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
@@ -228,7 +228,10 @@ const RETIRED_GEMINI_MODELS = new Set([
 
 const resolveDefaultModel = () => {
   const configuredModel = ENV.aiModel;
-  if (configuredModel && !RETIRED_GEMINI_MODELS.has(configuredModel)) {
+  if (
+    configuredModel?.startsWith("gemini-") &&
+    !RETIRED_GEMINI_MODELS.has(configuredModel)
+  ) {
     return configuredModel;
   }
   return "gemini-2.5-flash";
@@ -302,6 +305,17 @@ const parseRetryAfter = (value: string | null): number | undefined => {
   return Number.isNaN(at) ? undefined : Math.max(0, at - Date.now());
 };
 
+const isRetryableStatus = (status: number) =>
+  status === 408 || status === 429 || status >= 500;
+
+const summarizeGeminiFailure = (errorText: string) =>
+  errorText
+    .replace(/Bearer\s+\S+/gi, "Bearer [redacted]")
+    .replace(/([?&]key=)[^&\s]+/gi, "$1[redacted]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 500);
+
 // Equal-jitter exponential backoff. The cap/2 floor guarantees a minimum
 // delay so a misbehaving caller loop slows down instead of hammering the
 // upstream while it keeps returning errors.
@@ -325,7 +339,11 @@ const fetchWithBackoff = async (
   for (let attempt = 0; attempt <= RETRY_MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(url, init);
-      if (response.ok || attempt === RETRY_MAX_RETRIES) {
+      if (
+        response.ok ||
+        attempt === RETRY_MAX_RETRIES ||
+        !isRetryableStatus(response.status)
+      ) {
         return response;
       }
 
@@ -435,6 +453,12 @@ export async function invokeLLM(params: InvokeParams): Promise<InvokeResult> {
 
   if (!response.ok) {
     const errorText = await response.text();
+    console.error("[Gemini] upstream request failed", {
+      status: response.status,
+      statusText: response.statusText,
+      model: resolvedModel,
+      reason: summarizeGeminiFailure(errorText),
+    });
     throw new Error(
       `LLM invoke failed: ${response.status} ${response.statusText} – ${errorText}`
     );

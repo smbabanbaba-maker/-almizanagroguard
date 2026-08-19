@@ -306,7 +306,7 @@ var RETIRED_GEMINI_MODELS = /* @__PURE__ */ new Set([
 ]);
 var resolveDefaultModel = () => {
   const configuredModel = ENV.aiModel;
-  if (configuredModel && !RETIRED_GEMINI_MODELS.has(configuredModel)) {
+  if (configuredModel?.startsWith("gemini-") && !RETIRED_GEMINI_MODELS.has(configuredModel)) {
     return configuredModel;
   }
   return "gemini-2.5-flash";
@@ -356,6 +356,8 @@ var parseRetryAfter = (value) => {
   const at = Date.parse(value);
   return Number.isNaN(at) ? void 0 : Math.max(0, at - Date.now());
 };
+var isRetryableStatus = (status) => status === 408 || status === 429 || status >= 500;
+var summarizeGeminiFailure = (errorText) => errorText.replace(/Bearer\s+\S+/gi, "Bearer [redacted]").replace(/([?&]key=)[^&\s]+/gi, "$1[redacted]").replace(/\s+/g, " ").trim().slice(0, 500);
 var computeBackoffDelay = (attempt, retryAfterMs) => {
   const cap = Math.min(RETRY_BASE_DELAY_MS * 2 ** attempt, RETRY_MAX_DELAY_MS);
   const jittered = cap / 2 + Math.random() * (cap / 2);
@@ -366,7 +368,7 @@ var fetchWithBackoff = async (url, init) => {
   for (let attempt = 0; attempt <= RETRY_MAX_RETRIES; attempt++) {
     try {
       const response = await fetch(url, init);
-      if (response.ok || attempt === RETRY_MAX_RETRIES) {
+      if (response.ok || attempt === RETRY_MAX_RETRIES || !isRetryableStatus(response.status)) {
         return response;
       }
       const retryAfterMs = parseRetryAfter(
@@ -458,6 +460,12 @@ async function invokeLLM(params) {
   });
   if (!response.ok) {
     const errorText = await response.text();
+    console.error("[Gemini] upstream request failed", {
+      status: response.status,
+      statusText: response.statusText,
+      model: resolvedModel,
+      reason: summarizeGeminiFailure(errorText)
+    });
     throw new Error(
       `LLM invoke failed: ${response.status} ${response.statusText} \u2013 ${errorText}`
     );
