@@ -7,7 +7,7 @@ execFileSync(
   [
     "exec",
     "esbuild",
-    "server.ts",
+    "server/vercelHandler.ts",
     "--platform=node",
     "--packages=external",
     "--bundle",
@@ -18,7 +18,7 @@ execFileSync(
 );
 
 const bundle = readFileSync(output, "utf8");
-if (!bundle.includes("module.exports = __toCommonJS(server_exports)")) {
+if (!bundle.includes("module.exports = __toCommonJS(")) {
   throw new Error("Unexpected Vercel API bundle export shape");
 }
 appendFileSync(

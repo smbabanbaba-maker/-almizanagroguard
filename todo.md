@@ -248,3 +248,5 @@
 - [ ] Fix Ask AgroGuard to handle short inputs like Hi without exposing raw validation JSON
 - [ ] Replace Crop Health generic AI failure display with a clear actionable Vercel/OpenAI error path
 - [ ] Confirm production code paths do not require Manus hosting for Vercel deployment
+- [ ] Replace the Vercel Express export boundary that still causes `FUNCTION_INVOCATION_FAILED` on public tRPC routes
+- [ ] Verify public `/api/trpc/auth.me` and `/api/trpc/agroguard.ask` return JSON on the final Vercel deployment
