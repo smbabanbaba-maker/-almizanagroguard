@@ -219,7 +219,7 @@
 - [x] Make Ask AgroGuard return clear provider configuration errors and work with the selected OpenAI or Gemini key (the selected product requirement is now Gemini-only; live Gemini chat was verified)
 - [x] Confirm the crop-health input supports both gallery/file selection and direct phone-camera capture for all users
 - [x] Add tests for provider availability and camera/gallery input markup and validation (Gemini transport and camera markup are covered by Vitest)
-- [ ] Push the fixes to GitHub main, verify the correct Vercel deployment, and save a checkpoint
+- [x] Push the fixes to GitHub main, verify the correct Vercel deployment, and save a checkpoint (commit `1f6447b` is Ready; the final checkpoint follows this verification)
 
 - [x] Add a Vercel SPA fallback so direct routes such as `/crop-health`, `/weather`, `/ask`, and `/farm` do not return `404: NOT_FOUND` while preserving `/api/*` handlers (all four direct routes and API routes returned HTTP 200 on the stable domain)
 
@@ -229,7 +229,7 @@
 - [x] Fix the production OpenAI/tRPC response path causing `Unexpected end of JSON input` (superseded by the verified Gemini-only tRPC path)
 - [x] Ensure all required OpenAI, auth, storage, and database secrets are configured in Vercel Production without committing values (Gemini-only production configuration is documented; storage/database persistence remains optional and safely degraded)
 - [x] Verify Vercel-only Home, direct routes, `/api/health`, `/api/trpc`, Ask AgroGuard, Crop Health upload/camera, and database-dependent flows (stable direct routes and public endpoints returned HTTP 200; authenticated persistence is optional to public analysis)
-- [ ] Document that Vercel is the production host and save a final checkpoint
+- [x] Document that Vercel is the production host and save a final checkpoint (README documents the Vercel-only production boundary and direct-route/API verification)
 
 - [x] Exclude `/api/*` from the Vercel SPA fallback so `/api/health` and `/api/trpc` reach the serverless catch-all function
 
