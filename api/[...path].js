@@ -41,8 +41,27 @@ var import_zod4 = require("zod");
 // shared/const.ts
 var COOKIE_NAME = "app_session_id";
 var ONE_YEAR_MS = 1e3 * 60 * 60 * 24 * 365;
+var AXIOS_TIMEOUT_MS = 3e4;
 var UNAUTHED_ERR_MSG = "Please login (10001)";
 var NOT_ADMIN_ERR_MSG = "You do not have required permission (10002)";
+var decodeOAuthState = (state) => {
+  let decoded;
+  try {
+    decoded = atob(state);
+  } catch {
+    return { redirectUri: "" };
+  }
+  try {
+    const parsed = JSON.parse(decoded);
+    if (parsed && typeof parsed.redirectUri === "string") return parsed;
+  } catch {
+  }
+  return { redirectUri: decoded };
+};
+
+// server/routers.ts
+var import_bcryptjs = __toESM(require("bcryptjs"), 1);
+var import_node_crypto = require("node:crypto");
 
 // server/_core/cookies.ts
 function isSecureRequest(req) {
@@ -61,11 +80,109 @@ function getSessionCookieOptions(req) {
   };
 }
 
-// server/_core/systemRouter.ts
-var import_zod = require("zod");
+// shared/_core/errors.ts
+var HttpError = class extends Error {
+  constructor(statusCode, message) {
+    super(message);
+    this.statusCode = statusCode;
+    this.name = "HttpError";
+  }
+};
+var ForbiddenError = (msg) => new HttpError(403, msg);
 
-// server/_core/notification.ts
-var import_server = require("@trpc/server");
+// server/_core/sdk.ts
+var import_axios = __toESM(require("axios"), 1);
+var import_cookie = require("cookie");
+var import_jose = require("jose");
+
+// server/db.ts
+var import_drizzle_orm = require("drizzle-orm");
+var import_mysql2 = require("drizzle-orm/mysql2");
+
+// drizzle/schema.ts
+var import_mysql_core = require("drizzle-orm/mysql-core");
+var users = (0, import_mysql_core.mysqlTable)("users", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  openId: (0, import_mysql_core.varchar)("openId", { length: 64 }).notNull().unique(),
+  name: (0, import_mysql_core.text)("name"),
+  email: (0, import_mysql_core.varchar)("email", { length: 320 }),
+  loginMethod: (0, import_mysql_core.varchar)("loginMethod", { length: 64 }),
+  role: (0, import_mysql_core.mysqlEnum)("role", ["user", "admin"]).default("user").notNull(),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: (0, import_mysql_core.timestamp)("lastSignedIn").defaultNow().notNull()
+});
+var localAccounts = (0, import_mysql_core.mysqlTable)("localAccounts", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  userId: (0, import_mysql_core.int)("userId").notNull().unique(),
+  email: (0, import_mysql_core.varchar)("email", { length: 320 }).notNull().unique(),
+  passwordHash: (0, import_mysql_core.varchar)("passwordHash", { length: 255 }).notNull(),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+});
+var farms = (0, import_mysql_core.mysqlTable)("farms", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  userId: (0, import_mysql_core.int)("userId").notNull(),
+  name: (0, import_mysql_core.varchar)("name", { length: 160 }).notNull(),
+  location: (0, import_mysql_core.varchar)("location", { length: 255 }),
+  latitude: (0, import_mysql_core.decimal)("latitude", { precision: 10, scale: 7 }),
+  longitude: (0, import_mysql_core.decimal)("longitude", { precision: 10, scale: 7 }),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
+  updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+});
+var crops = (0, import_mysql_core.mysqlTable)("crops", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  farmId: (0, import_mysql_core.int)("farmId").notNull(),
+  name: (0, import_mysql_core.varchar)("name", { length: 80 }).notNull(),
+  variety: (0, import_mysql_core.varchar)("variety", { length: 120 }),
+  plantedAt: (0, import_mysql_core.timestamp)("plantedAt"),
+  status: (0, import_mysql_core.mysqlEnum)("status", ["active", "harvested", "archived"]).default("active").notNull(),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+});
+var cropHealthScans = (0, import_mysql_core.mysqlTable)("cropHealthScans", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  userId: (0, import_mysql_core.int)("userId"),
+  farmId: (0, import_mysql_core.int)("farmId"),
+  cropId: (0, import_mysql_core.int)("cropId"),
+  cropType: (0, import_mysql_core.varchar)("cropType", { length: 80 }).notNull(),
+  imageKey: (0, import_mysql_core.varchar)("imageKey", { length: 512 }).notNull(),
+  imageUrl: (0, import_mysql_core.varchar)("imageUrl", { length: 1024 }).notNull(),
+  status: (0, import_mysql_core.mysqlEnum)("status", ["processing", "complete", "failed"]).default("processing").notNull(),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+});
+var aiAnalysisResults = (0, import_mysql_core.mysqlTable)("aiAnalysisResults", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  scanId: (0, import_mysql_core.int)("scanId").notNull(),
+  crop: (0, import_mysql_core.varchar)("crop", { length: 80 }).notNull(),
+  possibleCondition: (0, import_mysql_core.varchar)("possibleCondition", { length: 255 }).notNull(),
+  confidence: (0, import_mysql_core.decimal)("confidence", { precision: 5, scale: 2 }).notNull(),
+  severity: (0, import_mysql_core.varchar)("severity", { length: 80 }).notNull(),
+  recommendation: (0, import_mysql_core.text)("recommendation").notNull(),
+  expertRequired: (0, import_mysql_core.int)("expertRequired").default(0).notNull(),
+  expertGuidance: (0, import_mysql_core.text)("expertGuidance"),
+  uncertaintyReason: (0, import_mysql_core.text)("uncertaintyReason"),
+  rawJson: (0, import_mysql_core.text)("rawJson"),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+});
+var recommendations = (0, import_mysql_core.mysqlTable)("recommendations", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  userId: (0, import_mysql_core.int)("userId"),
+  scanId: (0, import_mysql_core.int)("scanId"),
+  farmId: (0, import_mysql_core.int)("farmId"),
+  title: (0, import_mysql_core.varchar)("title", { length: 180 }).notNull(),
+  body: (0, import_mysql_core.text)("body").notNull(),
+  source: (0, import_mysql_core.varchar)("source", { length: 80 }).default("agroguard-ai").notNull(),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+});
+var farmerNotifications = (0, import_mysql_core.mysqlTable)("farmerNotifications", {
+  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+  userId: (0, import_mysql_core.int)("userId").notNull(),
+  type: (0, import_mysql_core.varchar)("type", { length: 48 }).notNull(),
+  title: (0, import_mysql_core.varchar)("title", { length: 180 }).notNull(),
+  body: (0, import_mysql_core.text)("body").notNull(),
+  isRead: (0, import_mysql_core.int)("isRead").default(0).notNull(),
+  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+});
 
 // server/_core/env.ts
 var nonEmpty = (value) => value?.trim() || "";
@@ -87,11 +204,481 @@ var ENV = {
   aiModel: nonEmpty(process.env.AGROGUARD_AI_MODEL)
 };
 
+// server/db.ts
+var _db = null;
+async function getDb() {
+  if (!_db && process.env.DATABASE_URL) {
+    try {
+      _db = (0, import_mysql2.drizzle)(process.env.DATABASE_URL);
+    } catch (error) {
+      console.warn("[Database] Failed to connect:", error);
+      _db = null;
+    }
+  }
+  return _db;
+}
+async function upsertUser(user) {
+  if (!user.openId) throw new Error("User openId is required for upsert");
+  const db = await getDb();
+  if (!db) return;
+  const values = { openId: user.openId };
+  const updateSet = {};
+  ["name", "email", "loginMethod"].forEach((field) => {
+    if (user[field] !== void 0) {
+      values[field] = user[field] ?? null;
+      updateSet[field] = user[field] ?? null;
+    }
+  });
+  if (user.lastSignedIn !== void 0) {
+    values.lastSignedIn = user.lastSignedIn;
+    updateSet.lastSignedIn = user.lastSignedIn;
+  }
+  if (user.role !== void 0) {
+    values.role = user.role;
+    updateSet.role = user.role;
+  } else if (user.openId === ENV.ownerOpenId) {
+    values.role = "admin";
+    updateSet.role = "admin";
+  }
+  if (!values.lastSignedIn) values.lastSignedIn = /* @__PURE__ */ new Date();
+  if (!Object.keys(updateSet).length) updateSet.lastSignedIn = /* @__PURE__ */ new Date();
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+}
+async function updateUserProfile(userId, name, email) {
+  const db = await getDb();
+  if (!db) return void 0;
+  await db.update(users).set({ name, email, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm.eq)(users.id, userId));
+  return db.select().from(users).where((0, import_drizzle_orm.eq)(users.id, userId)).limit(1).then((rows) => rows[0]);
+}
+async function getUserByOpenId(openId) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const result = await db.select().from(users).where((0, import_drizzle_orm.eq)(users.openId, openId)).limit(1);
+  return result[0];
+}
+async function getUserById(userId) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const result = await db.select().from(users).where((0, import_drizzle_orm.eq)(users.id, userId)).limit(1);
+  return result[0];
+}
+async function getLocalAccountByEmail(email) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const accounts = await db.select().from(localAccounts).where((0, import_drizzle_orm.eq)(localAccounts.email, email.toLowerCase())).limit(1);
+  const account = accounts[0];
+  if (!account) return void 0;
+  const user = await getUserById(account.userId);
+  return user ? { account, user } : void 0;
+}
+async function registerLocalAccount(input) {
+  const db = await getDb();
+  if (!db) throw new Error("Account storage is temporarily unavailable.");
+  const email = input.email.toLowerCase();
+  const existing = await getLocalAccountByEmail(email);
+  if (existing) throw new Error("An account already exists for this email.");
+  const inserted = await db.insert(users).values({
+    openId: input.openId,
+    name: input.name,
+    email,
+    loginMethod: "email",
+    lastSignedIn: /* @__PURE__ */ new Date()
+  });
+  const userId = Number(inserted.insertId);
+  await db.insert(localAccounts).values({
+    userId,
+    email,
+    passwordHash: input.passwordHash
+  });
+  const user = await getUserById(userId);
+  if (!user) throw new Error("Account creation did not complete.");
+  return user;
+}
+async function createFarmerNotification(input) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const inserted = await db.insert(farmerNotifications).values({
+    userId: input.userId,
+    type: input.type,
+    title: input.title,
+    body: input.body
+  });
+  return Number(inserted.insertId);
+}
+async function getFarmerNotifications(userId) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(farmerNotifications).where((0, import_drizzle_orm.eq)(farmerNotifications.userId, userId)).orderBy((0, import_drizzle_orm.desc)(farmerNotifications.createdAt)).limit(20);
+}
+async function markFarmerNotificationsRead(userId) {
+  const db = await getDb();
+  if (!db) return { updated: false };
+  await db.update(farmerNotifications).set({ isRead: 1 }).where((0, import_drizzle_orm.eq)(farmerNotifications.userId, userId));
+  return { updated: true };
+}
+async function saveCropAnalysis(input) {
+  const db = await getDb();
+  if (!db) return { scanId: void 0 };
+  const scan = await db.insert(cropHealthScans).values({
+    userId: input.userId,
+    cropType: input.cropType,
+    imageKey: input.imageKey,
+    imageUrl: input.imageUrl,
+    status: "complete"
+  });
+  const scanId = Number(scan.insertId);
+  await db.insert(aiAnalysisResults).values({
+    scanId,
+    crop: input.result.crop,
+    possibleCondition: input.result.possible_condition,
+    confidence: input.result.confidence.toFixed(2),
+    severity: input.result.severity,
+    recommendation: input.result.recommendation,
+    expertRequired: input.result.expert_required ? 1 : 0,
+    expertGuidance: input.result.expert_guidance,
+    uncertaintyReason: input.result.uncertainty_reason,
+    rawJson: JSON.stringify(input.result)
+  });
+  await db.insert(recommendations).values({
+    userId: input.userId,
+    scanId,
+    title: "Crop health next step",
+    body: input.result.recommendation
+  });
+  return { scanId };
+}
+async function getRecentScans(userId) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(cropHealthScans).where((0, import_drizzle_orm.eq)(cropHealthScans.userId, userId)).orderBy((0, import_drizzle_orm.desc)(cropHealthScans.createdAt)).limit(10);
+}
+async function getFarmProfile(userId) {
+  const db = await getDb();
+  if (!db) return { farm: void 0, crops: [] };
+  const farmRows = await db.select().from(farms).where((0, import_drizzle_orm.eq)(farms.userId, userId)).orderBy((0, import_drizzle_orm.desc)(farms.updatedAt)).limit(1);
+  const farm = farmRows[0];
+  if (!farm) return { farm: void 0, crops: [] };
+  const cropRows = await db.select().from(crops).where((0, import_drizzle_orm.eq)(crops.farmId, farm.id)).orderBy((0, import_drizzle_orm.desc)(crops.createdAt)).limit(24);
+  return { farm, crops: cropRows };
+}
+async function saveFarmProfile(input) {
+  const db = await getDb();
+  if (!db) return { farm: void 0, crops: [] };
+  const current = await getFarmProfile(input.userId);
+  let farmId = current.farm?.id;
+  if (farmId) {
+    await db.update(farms).set({
+      name: input.name,
+      location: input.location || null,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where((0, import_drizzle_orm.eq)(farms.id, farmId));
+  } else {
+    const inserted = await db.insert(farms).values({
+      userId: input.userId,
+      name: input.name,
+      location: input.location || null
+    });
+    farmId = Number(inserted.insertId);
+  }
+  const existingNames = new Set(
+    current.crops.map((crop) => crop.name.trim().toLowerCase())
+  );
+  const namesToAdd = Array.from(
+    new Set(input.cropNames.map((name) => name.trim()))
+  ).filter(Boolean).filter((name) => !existingNames.has(name.toLowerCase()));
+  if (namesToAdd.length) {
+    await db.insert(crops).values(
+      namesToAdd.map((name) => ({
+        farmId,
+        name,
+        status: "active"
+      }))
+    );
+  }
+  return getFarmProfile(input.userId);
+}
+async function getFarmOverview(userId) {
+  const db = await getDb();
+  if (!db) return { farms: [], scans: [], analyses: [], recommendations: [] };
+  const [farmRows, scanRows, recommendationRows] = await Promise.all([
+    db.select().from(farms).where((0, import_drizzle_orm.eq)(farms.userId, userId)).limit(10),
+    db.select().from(cropHealthScans).where((0, import_drizzle_orm.eq)(cropHealthScans.userId, userId)).orderBy((0, import_drizzle_orm.desc)(cropHealthScans.createdAt)).limit(10),
+    db.select().from(recommendations).where((0, import_drizzle_orm.eq)(recommendations.userId, userId)).orderBy((0, import_drizzle_orm.desc)(recommendations.createdAt)).limit(10)
+  ]);
+  const scanIds = scanRows.map((scan) => scan.id);
+  const analysisRows = scanIds.length ? await db.select().from(aiAnalysisResults).where((0, import_drizzle_orm.inArray)(aiAnalysisResults.scanId, scanIds)).orderBy((0, import_drizzle_orm.desc)(aiAnalysisResults.createdAt)).limit(10) : [];
+  return {
+    farms: farmRows,
+    scans: scanRows,
+    analyses: analysisRows,
+    recommendations: recommendationRows
+  };
+}
+
+// server/_core/sdk.ts
+var isNonEmptyString = (value) => typeof value === "string" && value.length > 0;
+var EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
+var GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
+var GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
+var OAuthService = class {
+  constructor(client) {
+    this.client = client;
+    console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
+    if (!ENV.oAuthServerUrl) {
+      console.error(
+        "[OAuth] ERROR: OAUTH_SERVER_URL is not configured! Set OAUTH_SERVER_URL environment variable."
+      );
+    }
+  }
+  decodeState(state) {
+    return decodeOAuthState(state).redirectUri;
+  }
+  async getTokenByCode(code, state) {
+    const payload = {
+      clientId: ENV.appId,
+      grantType: "authorization_code",
+      code,
+      redirectUri: this.decodeState(state)
+    };
+    const { data } = await this.client.post(
+      EXCHANGE_TOKEN_PATH,
+      payload
+    );
+    return data;
+  }
+  async getUserInfoByToken(token) {
+    const { data } = await this.client.post(
+      GET_USER_INFO_PATH,
+      {
+        accessToken: token.accessToken
+      }
+    );
+    return data;
+  }
+};
+var createOAuthHttpClient = () => import_axios.default.create({
+  baseURL: ENV.oAuthServerUrl,
+  timeout: AXIOS_TIMEOUT_MS
+});
+var SDKServer = class {
+  client;
+  oauthService;
+  constructor(client = createOAuthHttpClient()) {
+    this.client = client;
+    this.oauthService = new OAuthService(this.client);
+  }
+  deriveLoginMethod(platforms, fallback) {
+    if (fallback && fallback.length > 0) return fallback;
+    if (!Array.isArray(platforms) || platforms.length === 0) return null;
+    const set = new Set(
+      platforms.filter((p) => typeof p === "string")
+    );
+    if (set.has("REGISTERED_PLATFORM_EMAIL")) return "email";
+    if (set.has("REGISTERED_PLATFORM_GOOGLE")) return "google";
+    if (set.has("REGISTERED_PLATFORM_APPLE")) return "apple";
+    if (set.has("REGISTERED_PLATFORM_MICROSOFT") || set.has("REGISTERED_PLATFORM_AZURE"))
+      return "microsoft";
+    if (set.has("REGISTERED_PLATFORM_GITHUB")) return "github";
+    const first = Array.from(set)[0];
+    return first ? first.toLowerCase() : null;
+  }
+  /**
+   * Exchange OAuth authorization code for access token
+   * @example
+   * const tokenResponse = await sdk.exchangeCodeForToken(code, state);
+   */
+  async exchangeCodeForToken(code, state) {
+    return this.oauthService.getTokenByCode(code, state);
+  }
+  /**
+   * Get user information using access token
+   * @example
+   * const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
+   */
+  async getUserInfo(accessToken) {
+    const data = await this.oauthService.getUserInfoByToken({
+      accessToken
+    });
+    const loginMethod = this.deriveLoginMethod(
+      data?.platforms,
+      data?.platform ?? data.platform ?? null
+    );
+    return {
+      ...data,
+      platform: loginMethod,
+      loginMethod
+    };
+  }
+  parseCookies(cookieHeader) {
+    if (!cookieHeader) {
+      return /* @__PURE__ */ new Map();
+    }
+    const parsed = (0, import_cookie.parse)(cookieHeader);
+    return new Map(Object.entries(parsed));
+  }
+  getSessionSecret() {
+    const secret = ENV.cookieSecret;
+    return new TextEncoder().encode(secret);
+  }
+  /**
+   * Create a session token for a Manus user openId
+   * @example
+   * const sessionToken = await sdk.createSessionToken(userInfo.openId);
+   */
+  async createSessionToken(openId, options = {}) {
+    return this.signSession(
+      {
+        openId,
+        appId: ENV.appId,
+        name: options.name || ""
+      },
+      options
+    );
+  }
+  async signSession(payload, options = {}) {
+    const issuedAt = Date.now();
+    const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
+    const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1e3);
+    const secretKey = this.getSessionSecret();
+    return new import_jose.SignJWT({
+      openId: payload.openId,
+      appId: payload.appId,
+      name: payload.name
+    }).setProtectedHeader({ alg: "HS256", typ: "JWT" }).setExpirationTime(expirationSeconds).sign(secretKey);
+  }
+  async verifySession(cookieValue) {
+    if (!cookieValue) {
+      console.warn("[Auth] Missing session cookie");
+      return null;
+    }
+    try {
+      const secretKey = this.getSessionSecret();
+      const { payload } = await (0, import_jose.jwtVerify)(cookieValue, secretKey, {
+        algorithms: ["HS256"]
+      });
+      const { openId, appId, name } = payload;
+      if (!isNonEmptyString(openId) || !isNonEmptyString(appId) || !isNonEmptyString(name)) {
+        console.warn("[Auth] Session payload missing required fields");
+        return null;
+      }
+      return {
+        openId,
+        appId,
+        name
+      };
+    } catch (error) {
+      console.warn("[Auth] Session verification failed", String(error));
+      return null;
+    }
+  }
+  async getUserInfoWithJwt(jwtToken) {
+    const payload = {
+      jwtToken,
+      projectId: ENV.appId
+    };
+    const { data } = await this.client.post(
+      GET_USER_INFO_WITH_JWT_PATH,
+      payload
+    );
+    const loginMethod = this.deriveLoginMethod(
+      data?.platforms,
+      data?.platform ?? data.platform ?? null
+    );
+    return {
+      ...data,
+      platform: loginMethod,
+      loginMethod
+    };
+  }
+  async authenticateRequest(req) {
+    const cookies = this.parseCookies(req.headers.cookie);
+    let sessionToken = cookies.get(COOKIE_NAME);
+    if (!sessionToken) {
+      const authHeader = req.headers.authorization;
+      if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+        sessionToken = authHeader.slice(7);
+      }
+    }
+    const session = await this.verifySession(sessionToken);
+    if (!session) {
+      throw ForbiddenError("Invalid session cookie");
+    }
+    if (session.openId.startsWith(CRON_OPEN_ID_PREFIX)) {
+      const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
+      const taskUid = userInfo.taskUid ?? null;
+      if (!taskUid) {
+        throw ForbiddenError("Cron session missing task_uid");
+      }
+      return buildCronUser(userInfo);
+    }
+    const sessionUserId = session.openId;
+    const signedInAt = /* @__PURE__ */ new Date();
+    if (sessionUserId.startsWith("local_")) {
+      const localUser = await getUserByOpenId(sessionUserId);
+      if (!localUser) {
+        throw ForbiddenError("User not found");
+      }
+      await upsertUser({
+        openId: localUser.openId,
+        lastSignedIn: signedInAt
+      });
+      return localUser;
+    }
+    let user = await getUserByOpenId(sessionUserId);
+    if (!user) {
+      try {
+        const userInfo = await this.getUserInfoWithJwt(sessionToken ?? "");
+        await upsertUser({
+          openId: userInfo.openId,
+          name: userInfo.name || null,
+          email: userInfo.email ?? null,
+          loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
+          lastSignedIn: signedInAt
+        });
+        user = await getUserByOpenId(userInfo.openId);
+      } catch (error) {
+        console.error("[Auth] Failed to sync user from OAuth:", error);
+        throw ForbiddenError("Failed to sync user info");
+      }
+    }
+    if (!user) {
+      throw ForbiddenError("User not found");
+    }
+    await upsertUser({
+      openId: user.openId,
+      lastSignedIn: signedInAt
+    });
+    return user;
+  }
+};
+var CRON_OPEN_ID_PREFIX = "cron_";
+function buildCronUser(userInfo) {
+  const now = /* @__PURE__ */ new Date();
+  return {
+    id: -1,
+    openId: userInfo.openId,
+    name: userInfo.name || "Manus Scheduled Task",
+    email: null,
+    loginMethod: null,
+    role: "user",
+    createdAt: now,
+    updatedAt: now,
+    lastSignedIn: now,
+    taskUid: userInfo.taskUid ?? void 0,
+    isCron: true
+  };
+}
+var sdk = new SDKServer();
+
+// server/_core/systemRouter.ts
+var import_zod = require("zod");
+
 // server/_core/notification.ts
+var import_server = require("@trpc/server");
 var TITLE_MAX_LENGTH = 1200;
 var CONTENT_MAX_LENGTH = 2e4;
 var trimValue = (value) => value.trim();
-var isNonEmptyString = (value) => typeof value === "string" && value.trim().length > 0;
+var isNonEmptyString2 = (value) => typeof value === "string" && value.trim().length > 0;
 var buildEndpointUrl = (baseUrl) => {
   const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   return new URL(
@@ -100,13 +687,13 @@ var buildEndpointUrl = (baseUrl) => {
   ).toString();
 };
 var validatePayload = (input) => {
-  if (!isNonEmptyString(input.title)) {
+  if (!isNonEmptyString2(input.title)) {
     throw new import_server.TRPCError({
       code: "BAD_REQUEST",
       message: "Notification title is required."
     });
   }
-  if (!isNonEmptyString(input.content)) {
+  if (!isNonEmptyString2(input.content)) {
     throw new import_server.TRPCError({
       code: "BAD_REQUEST",
       message: "Notification content is required."
@@ -889,196 +1476,6 @@ async function getLiveWeather(fetcher = fetch, location = getWeatherLocation()) 
   }
 }
 
-// server/db.ts
-var import_drizzle_orm = require("drizzle-orm");
-var import_mysql2 = require("drizzle-orm/mysql2");
-
-// drizzle/schema.ts
-var import_mysql_core = require("drizzle-orm/mysql-core");
-var users = (0, import_mysql_core.mysqlTable)("users", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-  openId: (0, import_mysql_core.varchar)("openId", { length: 64 }).notNull().unique(),
-  name: (0, import_mysql_core.text)("name"),
-  email: (0, import_mysql_core.varchar)("email", { length: 320 }),
-  loginMethod: (0, import_mysql_core.varchar)("loginMethod", { length: 64 }),
-  role: (0, import_mysql_core.mysqlEnum)("role", ["user", "admin"]).default("user").notNull(),
-  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-  updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull(),
-  lastSignedIn: (0, import_mysql_core.timestamp)("lastSignedIn").defaultNow().notNull()
-});
-var farms = (0, import_mysql_core.mysqlTable)("farms", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-  userId: (0, import_mysql_core.int)("userId").notNull(),
-  name: (0, import_mysql_core.varchar)("name", { length: 160 }).notNull(),
-  location: (0, import_mysql_core.varchar)("location", { length: 255 }),
-  latitude: (0, import_mysql_core.decimal)("latitude", { precision: 10, scale: 7 }),
-  longitude: (0, import_mysql_core.decimal)("longitude", { precision: 10, scale: 7 }),
-  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-  updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
-});
-var crops = (0, import_mysql_core.mysqlTable)("crops", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-  farmId: (0, import_mysql_core.int)("farmId").notNull(),
-  name: (0, import_mysql_core.varchar)("name", { length: 80 }).notNull(),
-  variety: (0, import_mysql_core.varchar)("variety", { length: 120 }),
-  plantedAt: (0, import_mysql_core.timestamp)("plantedAt"),
-  status: (0, import_mysql_core.mysqlEnum)("status", ["active", "harvested", "archived"]).default("active").notNull(),
-  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
-});
-var cropHealthScans = (0, import_mysql_core.mysqlTable)("cropHealthScans", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-  userId: (0, import_mysql_core.int)("userId"),
-  farmId: (0, import_mysql_core.int)("farmId"),
-  cropId: (0, import_mysql_core.int)("cropId"),
-  cropType: (0, import_mysql_core.varchar)("cropType", { length: 80 }).notNull(),
-  imageKey: (0, import_mysql_core.varchar)("imageKey", { length: 512 }).notNull(),
-  imageUrl: (0, import_mysql_core.varchar)("imageUrl", { length: 1024 }).notNull(),
-  status: (0, import_mysql_core.mysqlEnum)("status", ["processing", "complete", "failed"]).default("processing").notNull(),
-  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
-});
-var aiAnalysisResults = (0, import_mysql_core.mysqlTable)("aiAnalysisResults", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-  scanId: (0, import_mysql_core.int)("scanId").notNull(),
-  crop: (0, import_mysql_core.varchar)("crop", { length: 80 }).notNull(),
-  possibleCondition: (0, import_mysql_core.varchar)("possibleCondition", { length: 255 }).notNull(),
-  confidence: (0, import_mysql_core.decimal)("confidence", { precision: 5, scale: 2 }).notNull(),
-  severity: (0, import_mysql_core.varchar)("severity", { length: 80 }).notNull(),
-  recommendation: (0, import_mysql_core.text)("recommendation").notNull(),
-  expertRequired: (0, import_mysql_core.int)("expertRequired").default(0).notNull(),
-  expertGuidance: (0, import_mysql_core.text)("expertGuidance"),
-  uncertaintyReason: (0, import_mysql_core.text)("uncertaintyReason"),
-  rawJson: (0, import_mysql_core.text)("rawJson"),
-  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
-});
-var recommendations = (0, import_mysql_core.mysqlTable)("recommendations", {
-  id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-  userId: (0, import_mysql_core.int)("userId"),
-  scanId: (0, import_mysql_core.int)("scanId"),
-  farmId: (0, import_mysql_core.int)("farmId"),
-  title: (0, import_mysql_core.varchar)("title", { length: 180 }).notNull(),
-  body: (0, import_mysql_core.text)("body").notNull(),
-  source: (0, import_mysql_core.varchar)("source", { length: 80 }).default("agroguard-ai").notNull(),
-  createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
-});
-
-// server/db.ts
-var _db = null;
-async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = (0, import_mysql2.drizzle)(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
-  }
-  return _db;
-}
-async function updateUserProfile(userId, name, email) {
-  const db = await getDb();
-  if (!db) return void 0;
-  await db.update(users).set({ name, email, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm.eq)(users.id, userId));
-  return db.select().from(users).where((0, import_drizzle_orm.eq)(users.id, userId)).limit(1).then((rows) => rows[0]);
-}
-async function saveCropAnalysis(input) {
-  const db = await getDb();
-  if (!db) return { scanId: void 0 };
-  const scan = await db.insert(cropHealthScans).values({
-    userId: input.userId,
-    cropType: input.cropType,
-    imageKey: input.imageKey,
-    imageUrl: input.imageUrl,
-    status: "complete"
-  });
-  const scanId = Number(scan.insertId);
-  await db.insert(aiAnalysisResults).values({
-    scanId,
-    crop: input.result.crop,
-    possibleCondition: input.result.possible_condition,
-    confidence: input.result.confidence.toFixed(2),
-    severity: input.result.severity,
-    recommendation: input.result.recommendation,
-    expertRequired: input.result.expert_required ? 1 : 0,
-    expertGuidance: input.result.expert_guidance,
-    uncertaintyReason: input.result.uncertainty_reason,
-    rawJson: JSON.stringify(input.result)
-  });
-  await db.insert(recommendations).values({
-    userId: input.userId,
-    scanId,
-    title: "Crop health next step",
-    body: input.result.recommendation
-  });
-  return { scanId };
-}
-async function getRecentScans(userId) {
-  const db = await getDb();
-  if (!db) return [];
-  return db.select().from(cropHealthScans).where((0, import_drizzle_orm.eq)(cropHealthScans.userId, userId)).orderBy((0, import_drizzle_orm.desc)(cropHealthScans.createdAt)).limit(10);
-}
-async function getFarmProfile(userId) {
-  const db = await getDb();
-  if (!db) return { farm: void 0, crops: [] };
-  const farmRows = await db.select().from(farms).where((0, import_drizzle_orm.eq)(farms.userId, userId)).orderBy((0, import_drizzle_orm.desc)(farms.updatedAt)).limit(1);
-  const farm = farmRows[0];
-  if (!farm) return { farm: void 0, crops: [] };
-  const cropRows = await db.select().from(crops).where((0, import_drizzle_orm.eq)(crops.farmId, farm.id)).orderBy((0, import_drizzle_orm.desc)(crops.createdAt)).limit(24);
-  return { farm, crops: cropRows };
-}
-async function saveFarmProfile(input) {
-  const db = await getDb();
-  if (!db) return { farm: void 0, crops: [] };
-  const current = await getFarmProfile(input.userId);
-  let farmId = current.farm?.id;
-  if (farmId) {
-    await db.update(farms).set({
-      name: input.name,
-      location: input.location || null,
-      updatedAt: /* @__PURE__ */ new Date()
-    }).where((0, import_drizzle_orm.eq)(farms.id, farmId));
-  } else {
-    const inserted = await db.insert(farms).values({
-      userId: input.userId,
-      name: input.name,
-      location: input.location || null
-    });
-    farmId = Number(inserted.insertId);
-  }
-  const existingNames = new Set(
-    current.crops.map((crop) => crop.name.trim().toLowerCase())
-  );
-  const namesToAdd = Array.from(
-    new Set(input.cropNames.map((name) => name.trim()))
-  ).filter(Boolean).filter((name) => !existingNames.has(name.toLowerCase()));
-  if (namesToAdd.length) {
-    await db.insert(crops).values(
-      namesToAdd.map((name) => ({
-        farmId,
-        name,
-        status: "active"
-      }))
-    );
-  }
-  return getFarmProfile(input.userId);
-}
-async function getFarmOverview(userId) {
-  const db = await getDb();
-  if (!db) return { farms: [], scans: [], analyses: [], recommendations: [] };
-  const [farmRows, scanRows, recommendationRows] = await Promise.all([
-    db.select().from(farms).where((0, import_drizzle_orm.eq)(farms.userId, userId)).limit(10),
-    db.select().from(cropHealthScans).where((0, import_drizzle_orm.eq)(cropHealthScans.userId, userId)).orderBy((0, import_drizzle_orm.desc)(cropHealthScans.createdAt)).limit(10),
-    db.select().from(recommendations).where((0, import_drizzle_orm.eq)(recommendations.userId, userId)).orderBy((0, import_drizzle_orm.desc)(recommendations.createdAt)).limit(10)
-  ]);
-  const scanIds = scanRows.map((scan) => scan.id);
-  const analysisRows = scanIds.length ? await db.select().from(aiAnalysisResults).where((0, import_drizzle_orm.inArray)(aiAnalysisResults.scanId, scanIds)).orderBy((0, import_drizzle_orm.desc)(aiAnalysisResults.createdAt)).limit(10) : [];
-  return {
-    farms: farmRows,
-    scans: scanRows,
-    analyses: analysisRows,
-    recommendations: recommendationRows
-  };
-}
-
 // server/routers.ts
 var questionSchema = import_zod4.z.object({
   question: import_zod4.z.string().trim().min(1).max(1200)
@@ -1091,6 +1488,15 @@ var farmProfileSchema = import_zod4.z.object({
   name: import_zod4.z.string().trim().min(2).max(160),
   location: import_zod4.z.string().trim().max(255).optional(),
   crops: import_zod4.z.array(import_zod4.z.string().trim().min(1).max(80)).max(24).default([])
+});
+var registerSchema = import_zod4.z.object({
+  name: import_zod4.z.string().trim().min(2).max(120),
+  email: import_zod4.z.string().trim().email().max(320),
+  password: import_zod4.z.string().min(10).max(72)
+});
+var loginSchema = import_zod4.z.object({
+  email: import_zod4.z.string().trim().email().max(320),
+  password: import_zod4.z.string().min(1).max(72)
 });
 var CROP_ANALYSIS_TIMEOUT_MS = 9e4;
 var rateBuckets = /* @__PURE__ */ new Map();
@@ -1153,6 +1559,70 @@ var appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query((opts) => opts.ctx.user),
+    register: publicProcedure.input(registerSchema).mutation(async ({ ctx, input }) => {
+      const email = input.email.toLowerCase();
+      const existing = await getLocalAccountByEmail(email);
+      if (existing) {
+        throw new Error(
+          "An account already exists for this email. Please log in."
+        );
+      }
+      const passwordHash = await import_bcryptjs.default.hash(input.password, 12);
+      let user;
+      try {
+        user = await registerLocalAccount({
+          openId: `local_${(0, import_node_crypto.randomUUID)()}`,
+          name: input.name,
+          email,
+          passwordHash
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "";
+        if (/already exists|duplicate/i.test(message)) {
+          throw new Error(
+            "An account already exists for this email. Please log in."
+          );
+        }
+        throw new Error(
+          "We could not create your account right now. Please try again."
+        );
+      }
+      await createFarmerNotification({
+        userId: user.id,
+        type: "account",
+        title: "Welcome to AgroGuard",
+        body: "Your farmer account is ready. Add your farm details to personalize your workspace."
+      });
+      const sessionToken = await sdk.createSessionToken(user.openId, {
+        name: user.name || "Farmer",
+        expiresInMs: ONE_YEAR_MS
+      });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, {
+        ...getSessionCookieOptions(ctx.req),
+        maxAge: ONE_YEAR_MS
+      });
+      return { user };
+    }),
+    login: publicProcedure.input(loginSchema).mutation(async ({ ctx, input }) => {
+      const account = await getLocalAccountByEmail(input.email.toLowerCase());
+      const passwordValid = account && await import_bcryptjs.default.compare(input.password, account.account.passwordHash);
+      if (!account || !passwordValid) {
+        throw new Error("Incorrect email or password.");
+      }
+      await upsertUser({
+        openId: account.user.openId,
+        lastSignedIn: /* @__PURE__ */ new Date()
+      });
+      const sessionToken = await sdk.createSessionToken(account.user.openId, {
+        name: account.user.name || "Farmer",
+        expiresInMs: ONE_YEAR_MS
+      });
+      ctx.res.cookie(COOKIE_NAME, sessionToken, {
+        ...getSessionCookieOptions(ctx.req),
+        maxAge: ONE_YEAR_MS
+      });
+      return { user: account.user };
+    }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -1202,6 +1672,14 @@ var appRouter = router({
             result: analysis.result
           });
           scanId = saved.scanId;
+          if (ctx.user && scanId) {
+            await createFarmerNotification({
+              userId: ctx.user.id,
+              type: analysis.result.expert_required ? "expert-review" : "scan",
+              title: analysis.result.expert_required ? "Crop scan needs expert review" : "Crop scan saved",
+              body: analysis.result.expert_required ? `${analysis.result.crop}: ${analysis.result.expert_guidance || "Review the scan with an agricultural expert before treatment."}` : `${analysis.result.crop}: ${analysis.result.recommendation}`
+            });
+          }
         } catch (error) {
           console.warn("[AgroGuard] Optional analysis persistence skipped", {
             message: error instanceof Error ? error.message : String(error)
@@ -1257,6 +1735,14 @@ var appRouter = router({
   }),
   weather: router({
     current: publicProcedure.query(async () => getLiveWeather())
+  }),
+  notifications: router({
+    list: protectedProcedure.query(
+      ({ ctx }) => getFarmerNotifications(ctx.user.id)
+    ),
+    markAllRead: protectedProcedure.mutation(
+      ({ ctx }) => markFarmerNotificationsRead(ctx.user.id)
+    )
   }),
   agroguard: router({
     ask: publicProcedure.input(questionSchema).mutation(async ({ input, ctx }) => {

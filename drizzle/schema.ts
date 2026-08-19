@@ -22,6 +22,16 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+export const localAccounts = mysqlTable("localAccounts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  passwordHash: varchar("passwordHash", { length: 255 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type LocalAccount = typeof localAccounts.$inferSelect;
+
 export const farms = mysqlTable("farms", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
@@ -85,3 +95,14 @@ export const recommendations = mysqlTable("recommendations", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type Recommendation = typeof recommendations.$inferSelect;
+
+export const farmerNotifications = mysqlTable("farmerNotifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  type: varchar("type", { length: 48 }).notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  body: text("body").notNull(),
+  isRead: int("isRead").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type FarmerNotification = typeof farmerNotifications.$inferSelect;

@@ -1,6 +1,9 @@
 import { z } from "zod";
-import { COOKIE_NAME } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
 import { getSessionCookieOptions } from "./_core/cookies";
+import { sdk } from "./_core/sdk";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
@@ -15,6 +18,12 @@ import {
   getFarmProfile,
   saveFarmProfile,
   updateUserProfile,
+  createFarmerNotification,
+  getFarmerNotifications,
+  getLocalAccountByEmail,
+  markFarmerNotificationsRead,
+  registerLocalAccount,
+  upsertUser,
 } from "./db";
 
 const questionSchema = z.object({
@@ -28,6 +37,15 @@ const farmProfileSchema = z.object({
   name: z.string().trim().min(2).max(160),
   location: z.string().trim().max(255).optional(),
   crops: z.array(z.string().trim().min(1).max(80)).max(24).default([]),
+});
+const registerSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  email: z.string().trim().email().max(320),
+  password: z.string().min(10).max(72),
+});
+const loginSchema = z.object({
+  email: z.string().trim().email().max(320),
+  password: z.string().min(1).max(72),
 });
 export const CROP_ANALYSIS_TIMEOUT_MS = 90_000;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -97,6 +115,76 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
+    register: publicProcedure
+      .input(registerSchema)
+      .mutation(async ({ ctx, input }) => {
+        const email = input.email.toLowerCase();
+        const existing = await getLocalAccountByEmail(email);
+        if (existing) {
+          throw new Error(
+            "An account already exists for this email. Please log in."
+          );
+        }
+        const passwordHash = await bcrypt.hash(input.password, 12);
+        let user;
+        try {
+          user = await registerLocalAccount({
+            openId: `local_${randomUUID()}`,
+            name: input.name,
+            email,
+            passwordHash,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "";
+          if (/already exists|duplicate/i.test(message)) {
+            throw new Error(
+              "An account already exists for this email. Please log in."
+            );
+          }
+          throw new Error(
+            "We could not create your account right now. Please try again."
+          );
+        }
+        await createFarmerNotification({
+          userId: user.id,
+          type: "account",
+          title: "Welcome to AgroGuard",
+          body: "Your farmer account is ready. Add your farm details to personalize your workspace.",
+        });
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || "Farmer",
+          expiresInMs: ONE_YEAR_MS,
+        });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: ONE_YEAR_MS,
+        });
+        return { user };
+      }),
+    login: publicProcedure
+      .input(loginSchema)
+      .mutation(async ({ ctx, input }) => {
+        const account = await getLocalAccountByEmail(input.email.toLowerCase());
+        const passwordValid =
+          account &&
+          (await bcrypt.compare(input.password, account.account.passwordHash));
+        if (!account || !passwordValid) {
+          throw new Error("Incorrect email or password.");
+        }
+        await upsertUser({
+          openId: account.user.openId,
+          lastSignedIn: new Date(),
+        });
+        const sessionToken = await sdk.createSessionToken(account.user.openId, {
+          name: account.user.name || "Farmer",
+          expiresInMs: ONE_YEAR_MS,
+        });
+        ctx.res.cookie(COOKIE_NAME, sessionToken, {
+          ...getSessionCookieOptions(ctx.req),
+          maxAge: ONE_YEAR_MS,
+        });
+        return { user: account.user };
+      }),
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
@@ -150,6 +238,20 @@ export const appRouter = router({
               result: analysis.result,
             });
             scanId = saved.scanId;
+            if (ctx.user && scanId) {
+              await createFarmerNotification({
+                userId: ctx.user.id,
+                type: analysis.result.expert_required
+                  ? "expert-review"
+                  : "scan",
+                title: analysis.result.expert_required
+                  ? "Crop scan needs expert review"
+                  : "Crop scan saved",
+                body: analysis.result.expert_required
+                  ? `${analysis.result.crop}: ${analysis.result.expert_guidance || "Review the scan with an agricultural expert before treatment."}`
+                  : `${analysis.result.crop}: ${analysis.result.recommendation}`,
+              });
+            }
           } catch (error) {
             console.warn("[AgroGuard] Optional analysis persistence skipped", {
               message: error instanceof Error ? error.message : String(error),
@@ -209,6 +311,14 @@ export const appRouter = router({
   }),
   weather: router({
     current: publicProcedure.query(async () => getLiveWeather()),
+  }),
+  notifications: router({
+    list: protectedProcedure.query(({ ctx }) =>
+      getFarmerNotifications(ctx.user.id)
+    ),
+    markAllRead: protectedProcedure.mutation(({ ctx }) =>
+      markFarmerNotificationsRead(ctx.user.id)
+    ),
   }),
   agroguard: router({
     ask: publicProcedure

@@ -3,13 +3,19 @@ import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
-import { startLogin } from "@/const";
 import { prepareImageDataUrl } from "@/lib/imagePreparation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import {
   Activity,
@@ -186,6 +192,11 @@ export default function Home() {
   const [farmLocation, setFarmLocation] = useState("");
   const [farmCropsText, setFarmCropsText] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authName, setAuthName] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
   const [chatMessages, setChatMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([
@@ -197,7 +208,8 @@ export default function Home() {
   ]);
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const utils = trpc.useUtils();
   const { theme, toggleTheme } = useTheme();
   const analyze = trpc.cropHealth.analyze.useMutation({
     onSuccess: data => {
@@ -222,6 +234,10 @@ export default function Home() {
   const farmProfile = trpc.farm.profile.useQuery(undefined, {
     enabled: Boolean(user),
   });
+  const notifications = trpc.notifications.list.useQuery(undefined, {
+    enabled: Boolean(user),
+    refetchOnWindowFocus: false,
+  });
   const weather = trpc.weather.current.useQuery(undefined, {
     staleTime: 10 * 60 * 1000,
     retry: 1,
@@ -240,6 +256,32 @@ export default function Home() {
       toast.success("Farm profile saved");
     },
     onError: () => toast.error("We couldn't save your farm profile right now."),
+  });
+  const completeAuth = (name: string) => {
+    setAuthPassword("");
+    setAuthOpen(false);
+    utils.auth.me.invalidate();
+    utils.cropHealth.recent.invalidate();
+    utils.farm.overview.invalidate();
+    toast.success(`Welcome, ${name || "farmer"}`);
+  };
+  const register = trpc.auth.register.useMutation({
+    onSuccess: data => completeAuth(data.user.name || "farmer"),
+    onError: error =>
+      toast.error(
+        humanizeClientError(
+          error,
+          "We couldn't create your account right now. Please try again."
+        )
+      ),
+  });
+  const login = trpc.auth.login.useMutation({
+    onSuccess: data => completeAuth(data.user.name || "farmer"),
+    onError: error =>
+      toast.error(humanizeClientError(error, "Incorrect email or password.")),
+  });
+  const markNotificationsRead = trpc.notifications.markAllRead.useMutation({
+    onSuccess: () => notifications.refetch(),
   });
 
   useEffect(() => {
@@ -305,6 +347,24 @@ export default function Home() {
     setChatInput("");
     ask.mutate({ question });
   };
+  const openAuth = (mode: "login" | "register") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  };
+  const submitAuth = () => {
+    if (authMode === "register") {
+      register.mutate({
+        name: authName.trim(),
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+      return;
+    }
+    login.mutate({
+      email: authEmail.trim(),
+      password: authPassword,
+    });
+  };
   const voiceSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
   const speakAssessment = (result: any) => {
@@ -344,6 +404,98 @@ export default function Home() {
 
   return (
     <div className="app-shell">
+      <Dialog
+        open={authOpen}
+        onOpenChange={open => {
+          setAuthOpen(open);
+          if (!open) setAuthPassword("");
+        }}
+      >
+        <DialogContent className="auth-dialog">
+          <DialogHeader>
+            <span className="pill pill-green">FARMER ACCOUNT</span>
+            <DialogTitle>
+              {authMode === "register"
+                ? "Create your AgroGuard account"
+                : "Welcome back"}
+            </DialogTitle>
+            <DialogDescription>
+              {authMode === "register"
+                ? "Save farm details, scan history, and field guidance in one secure workspace."
+                : "Log in to continue with your farm records and scan history."}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="auth-form"
+            onSubmit={event => {
+              event.preventDefault();
+              submitAuth();
+            }}
+          >
+            {authMode === "register" && (
+              <label>
+                Full name
+                <input
+                  value={authName}
+                  onChange={event => setAuthName(event.target.value)}
+                  placeholder="Your name"
+                  minLength={2}
+                  required
+                />
+              </label>
+            )}
+            <label>
+              Email address
+              <input
+                type="email"
+                value={authEmail}
+                onChange={event => setAuthEmail(event.target.value)}
+                placeholder="farmer@example.com"
+                required
+              />
+            </label>
+            <label>
+              Password
+              <input
+                type="password"
+                value={authPassword}
+                onChange={event => setAuthPassword(event.target.value)}
+                placeholder={
+                  authMode === "register"
+                    ? "At least 10 characters"
+                    : "Your password"
+                }
+                minLength={authMode === "register" ? 10 : 1}
+                required
+              />
+            </label>
+            <Button
+              type="submit"
+              className="primary-btn"
+              disabled={register.isPending || login.isPending}
+            >
+              {register.isPending || login.isPending
+                ? "Please wait..."
+                : authMode === "register"
+                  ? "Create account"
+                  : "Log in"}
+            </Button>
+          </form>
+          <p className="auth-switch">
+            {authMode === "register"
+              ? "Already have an account?"
+              : "New to AgroGuard?"}{" "}
+            <button
+              type="button"
+              onClick={() =>
+                setAuthMode(authMode === "register" ? "login" : "register")
+              }
+            >
+              {authMode === "register" ? "Log in" : "Create an account"}
+            </button>
+          </p>
+        </DialogContent>
+      </Dialog>
       <aside className={`side-nav ${mobileOpen ? "is-open" : ""}`}>
         <div className="brand-row">
           <AppMark />
@@ -393,11 +545,23 @@ export default function Home() {
                 <strong>{user.name || "Farmer profile"}</strong>
                 <span>Active workspace</span>
               </div>
+              <Button variant="ghost" size="sm" onClick={() => logout()}>
+                Log out
+              </Button>
             </>
           ) : (
-            <Button variant="outline" size="sm" onClick={startLogin}>
-              <LogIn size={15} /> Sign in
-            </Button>
+            <div className="account-entry-actions">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => openAuth("login")}
+              >
+                <LogIn size={15} /> Log in
+              </Button>
+              <Button size="sm" onClick={() => openAuth("register")}>
+                Register
+              </Button>
+            </div>
           )}
         </div>
       </aside>
@@ -498,6 +662,7 @@ export default function Home() {
           {current === "farm" && (
             <FarmSection
               user={user}
+              openAuth={openAuth}
               profileEditing={profileEditing}
               setProfileEditing={setProfileEditing}
               profileName={profileName || user?.name || ""}
@@ -532,6 +697,9 @@ export default function Home() {
               recommendations={farmOverview?.recommendations ?? []}
               farms={farmOverview?.farms ?? []}
               farmProfile={farmProfile.data}
+              notifications={notifications.data ?? []}
+              markNotificationsRead={() => markNotificationsRead.mutate()}
+              markingNotificationsRead={markNotificationsRead.isPending}
             />
           )}
         </div>
@@ -1344,6 +1512,7 @@ function AskSection({ messages, input, setInput, send, pending }: any) {
 
 function FarmSection({
   user,
+  openAuth,
   profileEditing,
   setProfileEditing,
   profileName,
@@ -1364,9 +1533,18 @@ function FarmSection({
   recommendations = [],
   farms = [],
   farmProfile,
+  notifications = [],
+  markNotificationsRead,
+  markingNotificationsRead,
 }: any) {
   const savedFarm = farmProfile?.farm || farms[0];
   const savedCrops = farmProfile?.crops || [];
+  const scansById = new Map<number, any>(
+    recentScans.map((scan: any) => [scan.id, scan])
+  );
+  const unreadNotifications = notifications.filter(
+    (notification: any) => !notification.isRead
+  ).length;
   return (
     <div className="page-stack">
       <div className="feature-intro">
@@ -1401,8 +1579,8 @@ function FarmSection({
             {profileEditing ? "Close editor" : "Edit profile"}
           </Button>
         ) : (
-          <Button variant="outline" onClick={startLogin}>
-            Sign in to save
+          <Button variant="outline" onClick={() => openAuth("login")}>
+            Log in to save
           </Button>
         )}
       </div>
@@ -1514,6 +1692,118 @@ function FarmSection({
           </Card>
         ))}
       </div>
+      {user && (
+        <div className="two-col farm-detail-grid">
+          <Card className="history-card">
+            <CardHeader>
+              <div className="card-title-row">
+                <div>
+                  <span className="eyebrow">SAVED SCANS</span>
+                  <CardTitle>Crop health history</CardTitle>
+                </div>
+                <Badge className="badge-muted">{analyses.length}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {analyses.length ? (
+                <div className="history-list">
+                  {analyses.slice(0, 8).map((analysis: any) => {
+                    const scan = scansById.get(analysis.scanId);
+                    return (
+                      <div className="history-row" key={analysis.id}>
+                        <div className="history-icon">
+                          <Leaf size={16} />
+                        </div>
+                        <div>
+                          <strong>{analysis.crop}</strong>
+                          <p>
+                            {analysis.possibleCondition} · {analysis.severity}
+                          </p>
+                          <small>
+                            {scan?.createdAt
+                              ? new Date(scan.createdAt).toLocaleString()
+                              : "Saved crop assessment"}
+                          </small>
+                        </div>
+                        <div className="history-confidence">
+                          <strong>{Number(analysis.confidence)}%</strong>
+                          <span>confidence</span>
+                        </div>
+                        <p className="history-guidance">
+                          {analysis.recommendation}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="empty-insight">
+                  <div className="empty-icon">
+                    <Activity size={20} />
+                  </div>
+                  <div>
+                    <strong>No saved scans yet</strong>
+                    <p>Your completed crop checks will appear here.</p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="notification-card">
+            <CardHeader>
+              <div className="card-title-row">
+                <div>
+                  <span className="eyebrow">ACCOUNT ACTIVITY</span>
+                  <CardTitle>Notifications</CardTitle>
+                </div>
+                {unreadNotifications > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={markNotificationsRead}
+                    disabled={markingNotificationsRead}
+                  >
+                    Mark read
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              {notifications.length ? (
+                <div className="notification-list">
+                  {notifications.slice(0, 8).map((notification: any) => (
+                    <div
+                      className={`notification-row ${notification.isRead ? "" : "unread"}`}
+                      key={notification.id}
+                    >
+                      <div className="notification-dot" />
+                      <div>
+                        <strong>{notification.title}</strong>
+                        <p>{notification.body}</p>
+                        <small>
+                          {new Date(notification.createdAt).toLocaleString()}
+                        </small>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-insight">
+                  <div className="empty-icon">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <strong>You are all caught up</strong>
+                    <p>
+                      Scan updates and expert-review prompts will appear here.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

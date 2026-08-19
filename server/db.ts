@@ -8,6 +8,8 @@ import {
   cropHealthScans,
   aiAnalysisResults,
   recommendations,
+  localAccounts,
+  farmerNotifications,
 } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import type { CropAnalysis } from "./ai/cropAnalysis";
@@ -81,6 +83,98 @@ export async function getUserByOpenId(openId: string) {
     .where(eq(users.openId, openId))
     .limit(1);
   return result[0];
+}
+
+export async function getUserById(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return result[0];
+}
+
+export async function getLocalAccountByEmail(email: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const accounts = await db
+    .select()
+    .from(localAccounts)
+    .where(eq(localAccounts.email, email.toLowerCase()))
+    .limit(1);
+  const account = accounts[0];
+  if (!account) return undefined;
+  const user = await getUserById(account.userId);
+  return user ? { account, user } : undefined;
+}
+
+export async function registerLocalAccount(input: {
+  openId: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Account storage is temporarily unavailable.");
+  const email = input.email.toLowerCase();
+  const existing = await getLocalAccountByEmail(email);
+  if (existing) throw new Error("An account already exists for this email.");
+  const inserted = await db.insert(users).values({
+    openId: input.openId,
+    name: input.name,
+    email,
+    loginMethod: "email",
+    lastSignedIn: new Date(),
+  });
+  const userId = Number((inserted as any).insertId);
+  await db.insert(localAccounts).values({
+    userId,
+    email,
+    passwordHash: input.passwordHash,
+  });
+  const user = await getUserById(userId);
+  if (!user) throw new Error("Account creation did not complete.");
+  return user;
+}
+
+export async function createFarmerNotification(input: {
+  userId: number;
+  type: string;
+  title: string;
+  body: string;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const inserted = await db.insert(farmerNotifications).values({
+    userId: input.userId,
+    type: input.type,
+    title: input.title,
+    body: input.body,
+  });
+  return Number((inserted as any).insertId);
+}
+
+export async function getFarmerNotifications(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(farmerNotifications)
+    .where(eq(farmerNotifications.userId, userId))
+    .orderBy(desc(farmerNotifications.createdAt))
+    .limit(20);
+}
+
+export async function markFarmerNotificationsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return { updated: false };
+  await db
+    .update(farmerNotifications)
+    .set({ isRead: 1 })
+    .where(eq(farmerNotifications.userId, userId));
+  return { updated: true };
 }
 
 export async function saveCropAnalysis(input: {

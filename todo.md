@@ -283,3 +283,12 @@
 - [x] Surface actionable weather alerts from the existing live weather snapshot in the dashboard and profile-aware guidance
 - [x] Add an agronomist-referral action for uncertain or high-severity assessments without fabricating contact information
 - [x] Add coverage for the new storage, procedure, voice-control, weather-alert, and referral behavior, then validate and deploy to Vercel (44 tests passed; stable Home, My Farm, health, and live-weather endpoints returned HTTP 200 after Vercel marked commit `1549fcc` Ready)
+
+## Farmer account and dashboard experience
+
+- [ ] Audit the current Vercel-compatible sign-in capability and define a secure English registration and login approach
+- [ ] Implement usable Register, Login, Logout, and account-profile entry points without exposing credentials or weakening session security
+- [ ] Build a detailed signed-in scan-history view with each saved outcome, timestamp, confidence, and follow-up guidance
+- [ ] Add an in-app notifications center for saved scans, expert-review prompts, and current weather attention items
+- [ ] Improve the signed-in dashboard with clear account status, activity summaries, and practical empty states
+- [ ] Add regression coverage for account, history, notification, and dashboard behavior, then validate and deploy to Vercel
