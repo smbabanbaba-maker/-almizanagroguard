@@ -7,6 +7,7 @@ import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { analyzeCropImage } from "./ai/cropAnalysis";
 import { contentToText } from "./ai/resultParser";
+import { getLiveWeather } from "./weather";
 import {
   saveCropAnalysis,
   getRecentScans,
@@ -179,6 +180,9 @@ export const appRouter = router({
     overview: protectedProcedure.query(({ ctx }) =>
       getFarmOverview(ctx.user.id)
     ),
+  }),
+  weather: router({
+    current: publicProcedure.query(async () => getLiveWeather()),
   }),
   agroguard: router({
     ask: publicProcedure

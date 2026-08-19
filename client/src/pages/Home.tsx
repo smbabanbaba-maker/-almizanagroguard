@@ -69,17 +69,44 @@ function humanizeClientError(error: unknown, fallback: string) {
   return message || fallback;
 }
 
-const weatherSnapshot = {
+const weatherFallback = {
   location: "Your farm area",
-  condition: "Clear skies",
+  condition: "Weather update unavailable",
   temperature: "29°",
   feelsLike: "Feels like 31°",
   rain: "24%",
   humidity: "68%",
   wind: "11 km/h",
-  fieldNote: "Good window for scouting and light field work.",
-  source: "Local preview · connect a live provider for updates",
+  fieldNote:
+    "Use local conditions and avoid spraying when leaves are wet or wind increases.",
+  source: "Planning fallback · live weather is reconnecting",
+  alerts: [] as string[],
+  isLive: false,
 };
+
+function weatherDisplay(weather: any, loading = false) {
+  if (loading) {
+    return {
+      ...weatherFallback,
+      condition: "Loading field conditions",
+      source: "Connecting to live weather",
+    };
+  }
+  if (!weather) return weatherFallback;
+  return {
+    location: weather.location,
+    condition: weather.condition,
+    temperature: `${weather.temperatureC}°`,
+    feelsLike: `Feels like ${weather.feelsLikeC}°`,
+    rain: `${weather.rainProbability}%`,
+    humidity: `${weather.humidity}%`,
+    wind: `${weather.windKmh} km/h`,
+    fieldNote: weather.fieldNote,
+    source: weather.source,
+    alerts: weather.alerts ?? [],
+    isLive: true,
+  };
+}
 
 function AppMark() {
   return (
@@ -151,6 +178,11 @@ export default function Home() {
   );
   const { data: farmOverview } = trpc.farm.overview.useQuery(undefined, {
     enabled: Boolean(user),
+  });
+  const weather = trpc.weather.current.useQuery(undefined, {
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
   const profileUpdate = trpc.profile.update.useMutation({
     onSuccess: () => {
@@ -328,7 +360,12 @@ export default function Home() {
         </header>
         <div className="content-wrap">
           {current === "home" && (
-            <HomeSection setSection={setSection} recentScans={recentScans} />
+            <HomeSection
+              setSection={setSection}
+              recentScans={recentScans}
+              weather={weather.data}
+              weatherLoading={weather.isLoading}
+            />
           )}
           {current === "crop-health" && (
             <CropHealthSection
@@ -345,7 +382,12 @@ export default function Home() {
               isAnalyzing={analyze.isPending}
             />
           )}
-          {current === "weather" && <WeatherSection />}
+          {current === "weather" && (
+            <WeatherSection
+              weather={weather.data}
+              weatherLoading={weather.isLoading}
+            />
+          )}
           {current === "ask" && (
             <AskSection
               messages={chatMessages}
@@ -397,10 +439,15 @@ export default function Home() {
 function HomeSection({
   setSection,
   recentScans = [],
+  weather,
+  weatherLoading,
 }: {
   setSection: (id: Section) => void;
   recentScans?: any[];
+  weather?: any;
+  weatherLoading?: boolean;
 }) {
+  const weatherSnapshot = weatherDisplay(weather, weatherLoading);
   return (
     <div className="page-stack">
       <section className="hero-panel">
@@ -831,7 +878,14 @@ function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
   );
 }
 
-function WeatherSection() {
+function WeatherSection({
+  weather,
+  weatherLoading,
+}: {
+  weather?: any;
+  weatherLoading?: boolean;
+}) {
+  const weatherSnapshot = weatherDisplay(weather, weatherLoading);
   const metrics = [
     [
       ThermometerSun,
@@ -902,10 +956,19 @@ function WeatherSection() {
             <div className="weather-alert">
               <ShieldCheck size={19} />
               <div>
-                <strong>No active alerts</strong>
+                <strong>
+                  {weatherSnapshot.alerts.length
+                    ? "Field attention needed"
+                    : weatherSnapshot.isLive
+                      ? "No active alerts"
+                      : "Using planning fallback"}
+                </strong>
                 <p>
-                  AgroGuard will flag heat, heavy rain, wind, and dry-spell
-                  risks when a live provider is connected.
+                  {weatherSnapshot.alerts.length
+                    ? weatherSnapshot.alerts.join(" ")
+                    : weatherSnapshot.isLive
+                      ? "No high-risk heat, rain, wind, or thunderstorm conditions are flagged in the current forecast."
+                      : "Live weather will return automatically when the provider is available."}
                 </p>
               </div>
             </div>
@@ -929,9 +992,14 @@ function WeatherSection() {
       <div className="weather-connect-note">
         <CloudSun size={17} />
         <span>
-          <strong>Ready for live weather</strong> Connect a trusted local
-          weather API to replace this preview without changing the dashboard
-          components.
+          <strong>
+            {weatherSnapshot.isLive
+              ? "Live weather connected"
+              : "Weather fallback active"}
+          </strong>{" "}
+          {weatherSnapshot.isLive
+            ? "Forecast conditions are supplied through the AgroGuard weather service."
+            : "Please check local field conditions while AgroGuard reconnects to the weather service."}
         </span>
       </div>
     </div>

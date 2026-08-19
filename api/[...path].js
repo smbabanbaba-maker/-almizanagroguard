@@ -36,7 +36,7 @@ module.exports = __toCommonJS(vercelHandler_exports);
 var import_fetch = require("@trpc/server/adapters/fetch");
 
 // server/routers.ts
-var import_zod3 = require("zod");
+var import_zod4 = require("zod");
 
 // shared/const.ts
 var COOKIE_NAME = "app_session_id";
@@ -657,6 +657,138 @@ async function analyzeCropImage(imageDataUrl, cropType = "tomato", adapter = new
   return { result, imageBytes: bytes, mimeType, confidenceBand };
 }
 
+// server/weather.ts
+var import_zod3 = require("zod");
+var WEATHER_FETCH_TIMEOUT_MS = 8e3;
+var responseSchema = import_zod3.z.object({
+  current: import_zod3.z.object({
+    time: import_zod3.z.string(),
+    temperature_2m: import_zod3.z.number(),
+    relative_humidity_2m: import_zod3.z.number(),
+    apparent_temperature: import_zod3.z.number(),
+    weather_code: import_zod3.z.number(),
+    wind_speed_10m: import_zod3.z.number()
+  }),
+  daily: import_zod3.z.object({
+    precipitation_probability_max: import_zod3.z.array(import_zod3.z.number()).min(1),
+    precipitation_sum: import_zod3.z.array(import_zod3.z.number()).min(1),
+    wind_speed_10m_max: import_zod3.z.array(import_zod3.z.number()).min(1)
+  })
+});
+var weatherCondition = (code) => {
+  if (code === 0) return "Clear skies";
+  if (code === 1) return "Mainly clear";
+  if (code === 2) return "Partly cloudy";
+  if (code === 3) return "Overcast";
+  if ([45, 48].includes(code)) return "Foggy";
+  if ([51, 53, 55, 56, 57].includes(code)) return "Drizzle";
+  if ([61, 63, 65, 66, 67].includes(code)) return "Rain";
+  if ([71, 73, 75, 77].includes(code)) return "Snow";
+  if ([80, 81, 82].includes(code)) return "Rain showers";
+  if ([85, 86].includes(code)) return "Snow showers";
+  if ([95, 96, 99].includes(code)) return "Thunderstorms";
+  return "Changing conditions";
+};
+var asLocationNumber = (value, fallback, min, max) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric >= min && numeric <= max ? numeric : fallback;
+};
+function getWeatherLocation() {
+  return {
+    latitude: asLocationNumber(
+      process.env.AGROGUARD_WEATHER_LATITUDE,
+      12.0022,
+      -90,
+      90
+    ),
+    longitude: asLocationNumber(
+      process.env.AGROGUARD_WEATHER_LONGITUDE,
+      8.592,
+      -180,
+      180
+    ),
+    label: process.env.AGROGUARD_WEATHER_LOCATION?.trim().slice(0, 80) || "Kano, Nigeria"
+  };
+}
+function normalizeWeatherResponse(payload, location = getWeatherLocation()) {
+  const current = payload.current;
+  const rainProbability = Math.round(
+    payload.daily.precipitation_probability_max[0]
+  );
+  const rainTotal = payload.daily.precipitation_sum[0];
+  const maxWind = payload.daily.wind_speed_10m_max[0];
+  const alerts = [];
+  if (rainProbability >= 60 || rainTotal >= 8) {
+    alerts.push(
+      "Rain risk is elevated today. Protect drying harvests and avoid spraying before rain."
+    );
+  }
+  if (maxWind >= 25) {
+    alerts.push(
+      "Wind may affect spraying. Wait for calmer conditions before applying products."
+    );
+  }
+  if (current.temperature_2m >= 35) {
+    alerts.push(
+      "High heat can stress crops. Check soil moisture and water early if needed."
+    );
+  }
+  if ([95, 96, 99].includes(current.weather_code)) {
+    alerts.push(
+      "Thunderstorm risk is present. Pause field work during lightning and secure loose materials."
+    );
+  }
+  const fieldNote = alerts[0] ? alerts[0] : "Good window for scouting and light field work. Check leaf surfaces before spraying.";
+  return {
+    location: location.label,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    condition: weatherCondition(current.weather_code),
+    temperatureC: Math.round(current.temperature_2m),
+    feelsLikeC: Math.round(current.apparent_temperature),
+    rainProbability,
+    humidity: Math.round(current.relative_humidity_2m),
+    windKmh: Math.round(current.wind_speed_10m),
+    fieldNote,
+    alerts,
+    observedAt: current.time,
+    source: "Open-Meteo live forecast"
+  };
+}
+async function getLiveWeather(fetcher = fetch, location = getWeatherLocation()) {
+  const params = new URLSearchParams({
+    latitude: String(location.latitude),
+    longitude: String(location.longitude),
+    current: "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m",
+    daily: "precipitation_probability_max,precipitation_sum,wind_speed_10m_max",
+    timezone: "auto",
+    forecast_days: "1"
+  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WEATHER_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetcher(
+      `https://api.open-meteo.com/v1/forecast?${params.toString()}`,
+      { headers: { accept: "application/json" }, signal: controller.signal }
+    );
+    if (!response.ok)
+      throw new Error(`Weather provider returned ${response.status}`);
+    return normalizeWeatherResponse(
+      responseSchema.parse(await response.json()),
+      location
+    );
+  } catch (error) {
+    console.warn("[AgroGuard] Live weather request failed", {
+      message: error instanceof Error ? error.message : String(error)
+    });
+    throw new Error(
+      "Live weather data is unavailable right now. Please try again shortly."
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // server/db.ts
 var import_drizzle_orm = require("drizzle-orm");
 var import_mysql2 = require("drizzle-orm/mysql2");
@@ -803,12 +935,12 @@ async function getFarmOverview(userId) {
 }
 
 // server/routers.ts
-var questionSchema = import_zod3.z.object({
-  question: import_zod3.z.string().trim().min(1).max(1200)
+var questionSchema = import_zod4.z.object({
+  question: import_zod4.z.string().trim().min(1).max(1200)
 });
-var imageSchema = import_zod3.z.object({
-  imageDataUrl: import_zod3.z.string().min(100).max(12e6),
-  cropType: import_zod3.z.string().trim().min(1).max(80).default("tomato")
+var imageSchema = import_zod4.z.object({
+  imageDataUrl: import_zod4.z.string().min(100).max(12e6),
+  cropType: import_zod4.z.string().trim().min(1).max(80).default("tomato")
 });
 var CROP_ANALYSIS_TIMEOUT_MS = 9e4;
 var rateBuckets = /* @__PURE__ */ new Map();
@@ -943,9 +1075,9 @@ var appRouter = router({
   }),
   profile: router({
     update: protectedProcedure.input(
-      import_zod3.z.object({
-        name: import_zod3.z.string().trim().min(2).max(120),
-        email: import_zod3.z.string().email().max(320)
+      import_zod4.z.object({
+        name: import_zod4.z.string().trim().min(2).max(120),
+        email: import_zod4.z.string().email().max(320)
       })
     ).mutation(
       ({ ctx, input }) => updateUserProfile(ctx.user.id, input.name, input.email)
@@ -955,6 +1087,9 @@ var appRouter = router({
     overview: protectedProcedure.query(
       ({ ctx }) => getFarmOverview(ctx.user.id)
     )
+  }),
+  weather: router({
+    current: publicProcedure.query(async () => getLiveWeather())
   }),
   agroguard: router({
     ask: publicProcedure.input(questionSchema).mutation(async ({ input, ctx }) => {
