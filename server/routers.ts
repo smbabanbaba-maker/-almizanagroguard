@@ -58,8 +58,19 @@ export function friendlyAiError(error: unknown) {
     return new Error(
       "AgroGuard took too long to respond. Please try again with a clearer image."
     );
-  if (message.includes("invalid") || message.includes("configured"))
-    return error;
+  if (/413|payload too large|request entity too large/i.test(message))
+    return new Error(
+      "This image is too large for secure AI analysis. Please choose a smaller photo."
+    );
+  if (/401|403|api key|unauthorized/i.test(message))
+    return new Error(
+      "The AI provider key in Vercel was not accepted. Please check the production AI key."
+    );
+  if (/400.*(image|input|model|response_format)/i.test(message))
+    return new Error(
+      "The AI provider rejected this image request. Please try a clear JPG or PNG crop photo."
+    );
+  if (/invalid|configured/i.test(message)) return error;
   return new Error(
     "We couldn't complete the AI assessment right now. Please check your connection and try again."
   );
@@ -87,6 +98,9 @@ export const appRouter = router({
             "AI analysis timeout"
           );
         } catch (error) {
+          console.error("[AgroGuard] Crop analysis failed", {
+            message: error instanceof Error ? error.message : String(error),
+          });
           throw friendlyAiError(error);
         }
         const extension = analysis.mimeType

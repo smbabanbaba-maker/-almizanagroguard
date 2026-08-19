@@ -242,5 +242,6 @@
 - [ ] Remove the duplicate `api/[...path].js` and `api/[...path].cjs` conflict so Vercel can build the CommonJS function
 
 - [x] Expose the bundled CommonJS handler under a Vercel-detected `.js` catch-all with an `api/package.json` CommonJS boundary, then retest `/api/health`
-- [ ] Push the latest production API routing fix and validated project state to smbabanbaba-maker/-almizanagroguard main
+- [x] Push the latest production API routing fix and validated project state to smbabanbaba-maker/-almizanagroguard main
 - [x] Add a Vercel-detected nested `/api/trpc/[...path].js` wrapper so dotted tRPC procedure paths such as `agroguard.ask` do not return Vercel 404
+- [ ] Diagnose and fix the production Crop Health AI assessment failure shown after a mobile image upload

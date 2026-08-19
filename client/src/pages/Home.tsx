@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { startLogin } from "@/const";
+import { prepareImageDataUrl } from "@/lib/imagePreparation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -168,16 +169,19 @@ export default function Home() {
     setScanResult(null);
     setScanPreview(URL.createObjectURL(file));
   };
-  const analyzeImage = () => {
+  const analyzeImage = async () => {
     if (!scanFile || !scanPreview)
       return toast.error("Upload a clear tomato leaf photo first.");
-    const reader = new FileReader();
-    reader.onload = () =>
-      analyze.mutate({
-        imageDataUrl: String(reader.result),
-        cropType: "tomato",
-      });
-    reader.readAsDataURL(scanFile);
+    try {
+      const imageDataUrl = await prepareImageDataUrl(scanFile);
+      analyze.mutate({ imageDataUrl, cropType: "tomato" });
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not prepare this image. Please try again."
+      );
+    }
   };
   const sendQuestion = () => {
     const question = chatInput.trim();
