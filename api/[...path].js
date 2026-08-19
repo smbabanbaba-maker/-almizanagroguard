@@ -522,18 +522,19 @@ async function storagePut(relKey, data, contentType = "application/octet-stream"
 // server/ai/modelAdapter.ts
 var BuiltInVisionModelAdapter = class {
   async analyze(imageDataUrl, cropType) {
+    const cropContext = cropType === "auto-detect" ? "Identify the crop from the image; do not assume a crop name." : `The farmer expects a ${cropType} assessment, but correct that expectation if the image shows another crop.`;
     const response = await invokeLLM({
       messages: [
         {
           role: "system",
-          content: `You are AgroGuard's ${cropType} crop-health vision model. Provide a cautious preliminary agricultural assessment. Never claim certainty, never invent an image observation, and recommend expert help when the image is unclear or symptoms are serious. Return only the requested JSON.`
+          content: "You are AgroGuard's multi-crop vision assistant for farmers. Provide a cautious preliminary assessment from only what is visible. Never claim certainty, never invent an observation, and say when the image is unclear, not a crop, or cannot identify the plant. Follow integrated pest management: prioritize monitoring, hygiene, water and nutrient checks, cultural and physical controls, and prevention. If a crop-protection treatment category may be relevant, name only the category or active-control purpose, never a brand, dose, mixing ratio, purchase instruction, or application schedule. Tell the farmer to confirm a locally registered product whose label lists the identified crop and confirmed problem, and to follow its label and local extension advice. Return only the requested JSON."
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Assess this ${cropType} leaf or plant image. Identify the crop, possible condition, confidence from 0 to 100, severity, practical preliminary recommendation, whether an agricultural expert is required, expert guidance, and a reason for uncertainty when confidence is not high.`
+              text: `${cropContext} Assess this plant or crop image. Return a complete farmer-readable preliminary assessment. Set plant_identified to false when the image is not a plant/crop or identity is unclear. Use health_status as Healthy, Possible issue, Uncertain, or Not a plant. Give 2\u20136 concise care_steps and 2\u20135 prevention_actions. If healthy, say no treatment is needed. If there may be a disease or pest, treatment_category must remain conditional and generic; treatment_guidance must require local label registration and an expert for uncertainty or severe symptoms.`
             },
             {
               type: "image_url",
@@ -551,20 +552,45 @@ var BuiltInVisionModelAdapter = class {
             type: "object",
             properties: {
               crop: { type: "string" },
+              plant_identified: { type: "boolean" },
+              plant_identity_confidence: { type: "number" },
+              health_status: { type: "string" },
               possible_condition: { type: "string" },
               confidence: { type: "number" },
               severity: { type: "string" },
+              visible_symptoms: {
+                type: "array",
+                items: { type: "string" }
+              },
               recommendation: { type: "string" },
+              care_steps: {
+                type: "array",
+                items: { type: "string" }
+              },
+              prevention_actions: {
+                type: "array",
+                items: { type: "string" }
+              },
+              treatment_category: { type: "string" },
+              treatment_guidance: { type: "string" },
               expert_required: { type: "boolean" },
               expert_guidance: { type: "string" },
               uncertainty_reason: { type: "string" }
             },
             required: [
               "crop",
+              "plant_identified",
+              "plant_identity_confidence",
+              "health_status",
               "possible_condition",
               "confidence",
               "severity",
+              "visible_symptoms",
               "recommendation",
+              "care_steps",
+              "prevention_actions",
+              "treatment_category",
+              "treatment_guidance",
               "expert_required",
               "expert_guidance",
               "uncertainty_reason"
@@ -573,7 +599,7 @@ var BuiltInVisionModelAdapter = class {
           }
         }
       },
-      max_tokens: 700
+      max_tokens: 1100
     });
     return { content: response.choices?.[0]?.message?.content };
   }
@@ -583,10 +609,20 @@ var BuiltInVisionModelAdapter = class {
 var import_zod2 = require("zod");
 var cropAnalysisSchema = import_zod2.z.object({
   crop: import_zod2.z.string().min(1).max(80),
+  plant_identified: import_zod2.z.boolean().optional().default(true),
+  plant_identity_confidence: import_zod2.z.number().min(0).max(100).optional().default(0),
+  health_status: import_zod2.z.string().min(1).max(80).optional().default("Uncertain"),
   possible_condition: import_zod2.z.string().min(1).max(255),
   confidence: import_zod2.z.number().min(0).max(100),
   severity: import_zod2.z.string().min(1).max(80),
+  visible_symptoms: import_zod2.z.array(import_zod2.z.string().min(1).max(300)).max(8).optional().default([]),
   recommendation: import_zod2.z.string().min(1).max(4e3),
+  care_steps: import_zod2.z.array(import_zod2.z.string().min(1).max(700)).max(8).optional().default([]),
+  prevention_actions: import_zod2.z.array(import_zod2.z.string().min(1).max(700)).max(8).optional().default([]),
+  treatment_category: import_zod2.z.string().min(1).max(300).optional().default("No treatment recommendation yet"),
+  treatment_guidance: import_zod2.z.string().min(1).max(1500).optional().default(
+    "Confirm the crop and problem with a local agricultural extension professional before selecting any treatment."
+  ),
   expert_required: import_zod2.z.boolean(),
   expert_guidance: import_zod2.z.string().max(2e3).optional().default(
     "Consult a qualified agricultural expert if symptoms spread, the crop declines quickly, or the result is unclear."
@@ -618,7 +654,16 @@ function extractJsonObject(text2) {
 function parseCropAnalysis(content) {
   const text2 = extractJsonObject(contentToText(content));
   try {
-    return cropAnalysisSchema.parse(JSON.parse(text2));
+    const candidate = JSON.parse(text2);
+    if (candidate && typeof candidate === "object") {
+      const legacy = candidate;
+      legacy.care_steps ??= legacy.recommendation ? [legacy.recommendation] : [];
+      legacy.prevention_actions ??= [];
+      legacy.visible_symptoms ??= [];
+      legacy.treatment_category ??= "No treatment recommendation yet";
+      legacy.treatment_guidance ??= "Confirm the crop and problem with a local agricultural extension professional before selecting any treatment.";
+    }
+    return cropAnalysisSchema.parse(candidate);
   } catch {
     throw new Error(
       "The AI returned an invalid analysis. Please try another clear image."
@@ -627,11 +672,26 @@ function parseCropAnalysis(content) {
 }
 function createUnassessedCropAnalysis() {
   return {
-    crop: "Tomato",
+    crop: "Plant not identified",
+    plant_identified: false,
+    plant_identity_confidence: 0,
+    health_status: "Uncertain",
     possible_condition: "Unable to assess from this image",
     confidence: 0,
     severity: "Undetermined",
-    recommendation: "Take another photo of one tomato leaf in daylight. Keep the leaf in focus, fill most of the frame, and avoid showing farm equipment or wide field scenes.",
+    visible_symptoms: [],
+    recommendation: "Take another photo of one plant or leaf in daylight. Keep it in focus, fill most of the frame, and avoid showing farm equipment or wide field scenes.",
+    care_steps: [
+      "Photograph one leaf, stem, fruit, or whole plant in daylight.",
+      "Keep the plant in focus and fill most of the frame.",
+      "Do not apply a treatment until the plant and problem are clear."
+    ],
+    prevention_actions: [
+      "Check plants regularly for new spots, pests, wilting, or yellowing.",
+      "Keep tools and hands clean before moving between plants."
+    ],
+    treatment_category: "No treatment recommended while identification is uncertain",
+    treatment_guidance: "Do not buy or apply a pesticide from this result. Take a clearer photo and confirm the crop and problem with a local agricultural extension professional first.",
     expert_required: true,
     expert_guidance: "Consult a qualified agricultural expert if symptoms are spreading, the crop is declining quickly, or a clearer photo is still inconclusive.",
     uncertainty_reason: "The image or the AI response did not provide enough clear leaf detail for a reliable preliminary assessment."
@@ -670,10 +730,6 @@ function validateImageDataUrl(imageDataUrl) {
 }
 async function analyzeCropImage(imageDataUrl, cropType = "tomato", adapter = new BuiltInVisionModelAdapter()) {
   const { bytes, mimeType } = validateImageDataUrl(imageDataUrl);
-  if (cropType.toLowerCase() !== "tomato")
-    throw new Error(
-      "The first AgroGuard model is configured for tomato images only."
-    );
   const response = await adapter.analyze(imageDataUrl, cropType);
   let result;
   try {
@@ -973,7 +1029,7 @@ var questionSchema = import_zod4.z.object({
 });
 var imageSchema = import_zod4.z.object({
   imageDataUrl: import_zod4.z.string().min(100).max(12e6),
-  cropType: import_zod4.z.string().trim().min(1).max(80).default("tomato")
+  cropType: import_zod4.z.string().trim().min(1).max(80).default("auto-detect")
 });
 var CROP_ANALYSIS_TIMEOUT_MS = 9e4;
 var rateBuckets = /* @__PURE__ */ new Map();
@@ -1079,7 +1135,7 @@ var appRouter = router({
         try {
           const saved = await saveCropAnalysis({
             userId: ctx.user?.id,
-            cropType: input.cropType,
+            cropType: analysis.result.crop,
             imageKey: stored.key,
             imageUrl: stored.url,
             result: analysis.result
@@ -1093,10 +1149,18 @@ var appRouter = router({
       }
       return {
         crop: analysis.result.crop,
+        plantIdentified: analysis.result.plant_identified,
+        plantIdentityConfidence: analysis.result.plant_identity_confidence,
+        healthStatus: analysis.result.health_status,
         possibleCondition: analysis.result.possible_condition,
         confidence: analysis.result.confidence,
         severity: analysis.result.severity,
+        visibleSymptoms: analysis.result.visible_symptoms,
         recommendation: analysis.result.recommendation,
+        careSteps: analysis.result.care_steps,
+        preventionActions: analysis.result.prevention_actions,
+        treatmentCategory: analysis.result.treatment_category,
+        treatmentGuidance: analysis.result.treatment_guidance,
         expertRequired: analysis.result.expert_required,
         expertGuidance: analysis.result.expert_guidance,
         uncertaintyReason: analysis.result.uncertainty_reason,

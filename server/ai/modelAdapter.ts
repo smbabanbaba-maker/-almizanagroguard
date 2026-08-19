@@ -7,18 +7,23 @@ export interface CropVisionModelAdapter {
 
 export class BuiltInVisionModelAdapter implements CropVisionModelAdapter {
   async analyze(imageDataUrl: string, cropType: string) {
+    const cropContext =
+      cropType === "auto-detect"
+        ? "Identify the crop from the image; do not assume a crop name."
+        : `The farmer expects a ${cropType} assessment, but correct that expectation if the image shows another crop.`;
     const response = await invokeLLM({
       messages: [
         {
           role: "system",
-          content: `You are AgroGuard's ${cropType} crop-health vision model. Provide a cautious preliminary agricultural assessment. Never claim certainty, never invent an image observation, and recommend expert help when the image is unclear or symptoms are serious. Return only the requested JSON.`,
+          content:
+            "You are AgroGuard's multi-crop vision assistant for farmers. Provide a cautious preliminary assessment from only what is visible. Never claim certainty, never invent an observation, and say when the image is unclear, not a crop, or cannot identify the plant. Follow integrated pest management: prioritize monitoring, hygiene, water and nutrient checks, cultural and physical controls, and prevention. If a crop-protection treatment category may be relevant, name only the category or active-control purpose, never a brand, dose, mixing ratio, purchase instruction, or application schedule. Tell the farmer to confirm a locally registered product whose label lists the identified crop and confirmed problem, and to follow its label and local extension advice. Return only the requested JSON.",
         },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: `Assess this ${cropType} leaf or plant image. Identify the crop, possible condition, confidence from 0 to 100, severity, practical preliminary recommendation, whether an agricultural expert is required, expert guidance, and a reason for uncertainty when confidence is not high.`,
+              text: `${cropContext} Assess this plant or crop image. Return a complete farmer-readable preliminary assessment. Set plant_identified to false when the image is not a plant/crop or identity is unclear. Use health_status as Healthy, Possible issue, Uncertain, or Not a plant. Give 2–6 concise care_steps and 2–5 prevention_actions. If healthy, say no treatment is needed. If there may be a disease or pest, treatment_category must remain conditional and generic; treatment_guidance must require local label registration and an expert for uncertainty or severe symptoms.`,
             },
             {
               type: "image_url",
@@ -36,20 +41,45 @@ export class BuiltInVisionModelAdapter implements CropVisionModelAdapter {
             type: "object",
             properties: {
               crop: { type: "string" },
+              plant_identified: { type: "boolean" },
+              plant_identity_confidence: { type: "number" },
+              health_status: { type: "string" },
               possible_condition: { type: "string" },
               confidence: { type: "number" },
               severity: { type: "string" },
+              visible_symptoms: {
+                type: "array",
+                items: { type: "string" },
+              },
               recommendation: { type: "string" },
+              care_steps: {
+                type: "array",
+                items: { type: "string" },
+              },
+              prevention_actions: {
+                type: "array",
+                items: { type: "string" },
+              },
+              treatment_category: { type: "string" },
+              treatment_guidance: { type: "string" },
               expert_required: { type: "boolean" },
               expert_guidance: { type: "string" },
               uncertainty_reason: { type: "string" },
             },
             required: [
               "crop",
+              "plant_identified",
+              "plant_identity_confidence",
+              "health_status",
               "possible_condition",
               "confidence",
               "severity",
+              "visible_symptoms",
               "recommendation",
+              "care_steps",
+              "prevention_actions",
+              "treatment_category",
+              "treatment_guidance",
               "expert_required",
               "expert_guidance",
               "uncertainty_reason",
@@ -58,7 +88,7 @@ export class BuiltInVisionModelAdapter implements CropVisionModelAdapter {
           },
         },
       },
-      max_tokens: 700,
+      max_tokens: 1100,
     });
     return { content: response.choices?.[0]?.message?.content };
   }

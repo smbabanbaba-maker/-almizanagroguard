@@ -57,10 +57,6 @@ export async function analyzeCropImage(
   confidenceBand: "high" | "medium" | "low";
 }> {
   const { bytes, mimeType } = validateImageDataUrl(imageDataUrl);
-  if (cropType.toLowerCase() !== "tomato")
-    throw new Error(
-      "The first AgroGuard model is configured for tomato images only."
-    );
   const response = await adapter.analyze(imageDataUrl, cropType);
   let result: CropAnalysis;
   try {

@@ -20,7 +20,7 @@ const questionSchema = z.object({
 });
 const imageSchema = z.object({
   imageDataUrl: z.string().min(100).max(12_000_000),
-  cropType: z.string().trim().min(1).max(80).default("tomato"),
+  cropType: z.string().trim().min(1).max(80).default("auto-detect"),
 });
 export const CROP_ANALYSIS_TIMEOUT_MS = 90_000;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -137,7 +137,7 @@ export const appRouter = router({
           try {
             const saved = await saveCropAnalysis({
               userId: ctx.user?.id,
-              cropType: input.cropType,
+              cropType: analysis.result.crop,
               imageKey: stored.key,
               imageUrl: stored.url,
               result: analysis.result,
@@ -151,10 +151,18 @@ export const appRouter = router({
         }
         return {
           crop: analysis.result.crop,
+          plantIdentified: analysis.result.plant_identified,
+          plantIdentityConfidence: analysis.result.plant_identity_confidence,
+          healthStatus: analysis.result.health_status,
           possibleCondition: analysis.result.possible_condition,
           confidence: analysis.result.confidence,
           severity: analysis.result.severity,
+          visibleSymptoms: analysis.result.visible_symptoms,
           recommendation: analysis.result.recommendation,
+          careSteps: analysis.result.care_steps,
+          preventionActions: analysis.result.prevention_actions,
+          treatmentCategory: analysis.result.treatment_category,
+          treatmentGuidance: analysis.result.treatment_guidance,
           expertRequired: analysis.result.expert_required,
           expertGuidance: analysis.result.expert_guidance,
           uncertaintyReason: analysis.result.uncertainty_reason,

@@ -226,10 +226,10 @@ export default function Home() {
   };
   const analyzeImage = async () => {
     if (!scanFile || !scanPreview)
-      return toast.error("Upload a clear tomato leaf photo first.");
+      return toast.error("Upload a clear photo of a crop or plant first.");
     try {
       const imageDataUrl = await prepareImageDataUrl(scanFile);
-      analyze.mutate({ imageDataUrl, cropType: "tomato" });
+      analyze.mutate({ imageDataUrl, cropType: "auto-detect" });
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -664,12 +664,14 @@ function CropHealthSection({
     <div className="page-stack narrow-page">
       <div className="feature-intro">
         <span className="pill pill-green">
-          <Leaf size={13} /> TOMATO FIRST
+          <Leaf size={13} /> MULTI-CROP CHECK
         </span>
         <h2>Check your crop health</h2>
         <p>
-          Take or upload a clear photo of a tomato leaf or plant. AgroGuard will
-          return an AI-assisted preliminary assessment, not a final diagnosis.
+          Take or upload a clear photo of any crop or plant. AgroGuard will
+          identify what it can see, explain the crop-health status, and give
+          practical next steps. It is a preliminary assessment, not a final
+          diagnosis.
         </p>
       </div>
       <div className="step-strip">
@@ -697,7 +699,7 @@ function CropHealthSection({
             >
               {scanPreview ? (
                 <>
-                  <img src={scanPreview} alt="Selected tomato crop" />
+                  <img src={scanPreview} alt="Selected crop or plant" />
                   <button
                     className="remove-image"
                     onClick={event => {
@@ -793,6 +795,13 @@ function CropHealthSection({
 function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
   const confidence = Number(result.confidence || 0);
   const level = confidenceLabel(confidence);
+  const symptoms = Array.isArray(result.visibleSymptoms)
+    ? result.visibleSymptoms
+    : [];
+  const careSteps = Array.isArray(result.careSteps) ? result.careSteps : [];
+  const preventionActions = Array.isArray(result.preventionActions)
+    ? result.preventionActions
+    : [];
   return (
     <div className="result-stack">
       <Card className="result-card">
@@ -800,7 +809,7 @@ function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
           <div className="result-head">
             <div>
               <span className="eyebrow">AI-ASSISTED ASSESSMENT</span>
-              <CardTitle>{result.crop || "Tomato"}</CardTitle>
+              <CardTitle>{result.crop || "Plant not identified"}</CardTitle>
             </div>
             <Badge className={`confidence-${level.toLowerCase()}`}>
               {level} confidence
@@ -810,7 +819,7 @@ function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
         <CardContent>
           <div className="condition-row">
             <div>
-              <span className="result-label">Possible condition</span>
+              <span className="result-label">Health assessment</span>
               <h3>{result.possibleCondition || "Unable to determine"}</h3>
             </div>
             <div className="confidence-score">
@@ -820,6 +829,18 @@ function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
           </div>
           <Progress value={confidence} className="confidence-bar" />
           <div className="result-metrics">
+            <div>
+              <span className="result-label">Plant identity</span>
+              <strong>
+                {result.plantIdentified === false
+                  ? "Not identified"
+                  : `${Number(result.plantIdentityConfidence || 0)}% match`}
+              </strong>
+            </div>
+            <div>
+              <span className="result-label">Health status</span>
+              <strong>{result.healthStatus || "Uncertain"}</strong>
+            </div>
             <div>
               <span className="result-label">Severity</span>
               <strong className="severity-text">
@@ -839,23 +860,86 @@ function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
               <div>
                 <strong>AgroGuard AI is not sufficiently confident.</strong>
                 <p>
-                  Please take a clearer image or consult an agricultural expert
-                  before acting.
+                  {result.uncertaintyReason ||
+                    "Please take a clearer image or consult an agricultural expert before acting."}
                 </p>
               </div>
             </div>
           )}
         </CardContent>
       </Card>
+      {symptoms.length > 0 && (
+        <Card className="guidance-card">
+          <CardHeader>
+            <CardTitle>What AgroGuard observed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="guidance-list">
+              {symptoms.map((symptom: string, index: number) => (
+                <li key={`${symptom}-${index}`}>
+                  <Check size={16} />
+                  <span>{symptom}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
       <Card className="recommendation-card">
         <CardHeader>
-          <CardTitle>What you should do</CardTitle>
+          <CardTitle>What you should do next</CardTitle>
         </CardHeader>
         <CardContent>
           <p>
             {result.recommendation ||
               "Retake the image in good light and seek local expert guidance."}
           </p>
+          {careSteps.length > 0 && (
+            <ol className="guidance-list numbered-list">
+              {careSteps.map((step: string, index: number) => (
+                <li key={`${step}-${index}`}>
+                  <b>{index + 1}</b>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {preventionActions.length > 0 && (
+            <div className="prevention-panel">
+              <span className="result-label">
+                Prevent the problem from spreading
+              </span>
+              <ul className="guidance-list">
+                {preventionActions.map((action: string, index: number) => (
+                  <li key={`${action}-${index}`}>
+                    <Check size={16} />
+                    <span>{action}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className="treatment-panel">
+            <div className="treatment-title">
+              <ShieldCheck size={18} />
+              <div>
+                <span className="result-label">Treatment check</span>
+                <strong>
+                  {result.treatmentCategory ||
+                    "No treatment recommendation yet"}
+                </strong>
+              </div>
+            </div>
+            <p>
+              {result.treatmentGuidance ||
+                "Confirm the crop and problem with a local agricultural extension professional before selecting any treatment."}
+            </p>
+            <small>
+              Only use a locally registered product whose label lists the crop
+              and confirmed problem. Follow the label and local extension
+              advice.
+            </small>
+          </div>
           <div className="expert-note">
             <ShieldCheck size={18} />
             <span>

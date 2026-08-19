@@ -703,6 +703,7 @@ button {
 .scan-card,
 .result-card,
 .recommendation-card,
+.guidance-card,
 .chat-card {
   border: 1px solid #e8e5dc;
   border-radius: 18px;
@@ -1191,6 +1192,84 @@ button {
   color: #66766b;
   line-height: 1.7;
   font-size: 13px;
+}
+.guidance-card .card-content,
+.recommendation-card .card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+.guidance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.guidance-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #486257;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.guidance-list svg {
+  color: #5d955a;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.numbered-list li b {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #eef5df;
+  color: #46724d;
+  font:
+    11px "DM Mono",
+    monospace;
+  flex: 0 0 auto;
+}
+.prevention-panel {
+  border-top: 1px solid #eceae2;
+  padding-top: 16px;
+}
+.prevention-panel .guidance-list {
+  margin-top: 10px;
+}
+.treatment-panel {
+  background: #fff4dd;
+  border: 1px solid #f4e4bc;
+  border-radius: 14px;
+  padding: 15px;
+}
+.treatment-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #8a6731;
+}
+.treatment-title strong {
+  display: block;
+  color: #735326;
+  font-size: 13px;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+.treatment-panel p {
+  color: #6d6048;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 11px 0 8px;
+}
+.treatment-panel small {
+  color: #876c40;
+  display: block;
+  font-size: 10px;
+  line-height: 1.5;
 }
 .expert-note {
   display: flex;

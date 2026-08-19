@@ -49,4 +49,94 @@ describe("AgroGuard result parser", () => {
       ])
     ).toMatchObject({ crop: "Tomato", confidence: 20 });
   });
+
+  it("preserves a complete healthy multi-crop assessment", () => {
+    expect(
+      parseCropAnalysis(
+        JSON.stringify({
+          crop: "Maize",
+          plant_identified: true,
+          plant_identity_confidence: 94,
+          health_status: "Healthy",
+          possible_condition: "No visible disease or pest damage",
+          confidence: 87,
+          severity: "None observed",
+          visible_symptoms: ["Leaves appear evenly green"],
+          recommendation: "Continue normal field monitoring.",
+          care_steps: ["Check the crop weekly."],
+          prevention_actions: ["Keep weeds controlled."],
+          treatment_category: "No treatment needed",
+          treatment_guidance:
+            "Do not apply a treatment when no problem is visible.",
+          expert_required: false,
+          expert_guidance: "Seek help if new symptoms appear.",
+          uncertainty_reason: "Image shows only part of the plant.",
+        })
+      )
+    ).toMatchObject({
+      crop: "Maize",
+      health_status: "Healthy",
+      treatment_category: "No treatment needed",
+    });
+  });
+
+  it("preserves conditional care guidance for a suspected crop problem", () => {
+    expect(
+      parseCropAnalysis(
+        JSON.stringify({
+          crop: "Cassava",
+          plant_identified: true,
+          plant_identity_confidence: 84,
+          health_status: "Possible issue",
+          possible_condition: "Possible leaf-spot symptoms",
+          confidence: 61,
+          severity: "Moderate",
+          visible_symptoms: ["Brown spots visible on leaves"],
+          recommendation: "Inspect nearby plants before treating.",
+          care_steps: ["Remove badly affected leaves if practical."],
+          prevention_actions: ["Avoid wetting leaves during irrigation."],
+          treatment_category:
+            "Locally registered crop-protection treatment, if confirmed",
+          treatment_guidance:
+            "Confirm the diagnosis and verify a locally registered product label before any treatment.",
+          expert_required: true,
+          expert_guidance: "Ask an extension officer to confirm the cause.",
+          uncertainty_reason: "The image does not show the whole plant.",
+        })
+      )
+    ).toMatchObject({
+      crop: "Cassava",
+      health_status: "Possible issue",
+      expert_required: true,
+    });
+  });
+
+  it("handles a non-plant image with clear retake guidance", () => {
+    expect(
+      parseCropAnalysis(
+        JSON.stringify({
+          crop: "Plant not identified",
+          plant_identified: false,
+          plant_identity_confidence: 0,
+          health_status: "Not a plant",
+          possible_condition: "The image does not clearly show a crop or plant",
+          confidence: 96,
+          severity: "Not applicable",
+          visible_symptoms: [],
+          recommendation: "Take a close photo of one crop leaf or plant.",
+          care_steps: ["Retake the photo in daylight."],
+          prevention_actions: ["Keep the camera focused on the plant."],
+          treatment_category: "No treatment recommended",
+          treatment_guidance:
+            "Do not apply a treatment until a crop is identified.",
+          expert_required: false,
+          expert_guidance: "No expert review is needed for this image alone.",
+          uncertainty_reason: "No plant was visible in the photo.",
+        })
+      )
+    ).toMatchObject({
+      plant_identified: false,
+      health_status: "Not a plant",
+    });
+  });
 });

@@ -264,3 +264,11 @@
 - [x] Inspect the live Crop Health invalid-analysis response caused after a successful image upload
 - [x] Harden Gemini structured-result parsing and convert malformed model output into an actionable farmer-safe result
 - [x] Add regression coverage for Gemini vision content variants and deploy the repaired Crop Health flow to Vercel (the user-provided image returned HTTP 200 with a structured low-confidence assessment)
+
+## Multi-crop Crop Health guidance
+
+- [ ] Define a multi-crop Gemini assessment schema that identifies the visible plant and distinguishes healthy, uncertain, and suspected-problem outcomes
+- [ ] Add readable symptoms, practical care steps, prevention actions, and locally verifiable treatment-category guidance without unsafe purchase or dosage claims
+- [ ] Update Crop Health to present the full assessment clearly on mobile, including plant identity, health status, next steps, and safety guidance
+- [ ] Add regression tests for healthy, suspected-problem, non-plant, and multi-crop model responses
+- [ ] Validate and deploy the expanded Crop Health flow to Vercel
