@@ -273,3 +273,4 @@
 - [ ] Add regression tests for healthy, suspected-problem, non-plant, and multi-crop model responses
 - [ ] Validate and deploy the expanded Crop Health flow to Vercel
 - [ ] Resolve the live Gemini multi-crop structured-response fallback so clear plant photos return detailed identified-crop guidance rather than the uncertainty fallback
+- [ ] Normalize Gemini fractional confidence values into the percentage scale displayed to farmers

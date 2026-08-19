@@ -111,6 +111,31 @@ describe("AgroGuard result parser", () => {
     });
   });
 
+  it("normalizes Gemini fractional confidence values to farmer-readable percentages", () => {
+    const analysis = parseCropAnalysis(
+      JSON.stringify({
+        crop: "Tomato",
+        plant_identified: true,
+        plant_identity_confidence: 0.92,
+        health_status: "Possible issue",
+        possible_condition: "Possible leaf spot",
+        confidence: 0.85,
+        severity: "Moderate",
+        visible_symptoms: ["Dark leaf spots"],
+        recommendation: "Inspect nearby plants.",
+        care_steps: ["Remove heavily affected leaves."],
+        prevention_actions: ["Avoid wetting leaves during irrigation."],
+        treatment_category: "Fungicide category if locally confirmed",
+        treatment_guidance: "Confirm local registration and follow the label.",
+        expert_required: false,
+        expert_guidance: "Seek help if symptoms spread.",
+        uncertainty_reason: "A lab check may distinguish similar leaf spots.",
+      })
+    );
+    expect(analysis.confidence).toBe(85);
+    expect(analysis.plant_identity_confidence).toBe(92);
+  });
+
   it("handles a non-plant image with clear retake guidance", () => {
     expect(
       parseCropAnalysis(

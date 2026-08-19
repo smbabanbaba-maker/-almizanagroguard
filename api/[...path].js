@@ -651,6 +651,10 @@ function extractJsonObject(text2) {
   const end = unfenced.lastIndexOf("}");
   return start >= 0 && end > start ? unfenced.slice(start, end + 1) : unfenced;
 }
+function normalizePercentage(value) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return value;
+  return value > 0 && value <= 1 ? Math.round(value * 100) : value;
+}
 function parseCropAnalysis(content) {
   const text2 = extractJsonObject(contentToText(content));
   try {
@@ -662,6 +666,10 @@ function parseCropAnalysis(content) {
       legacy.visible_symptoms ??= [];
       legacy.treatment_category ??= "No treatment recommendation yet";
       legacy.treatment_guidance ??= "Confirm the crop and problem with a local agricultural extension professional before selecting any treatment.";
+      legacy.confidence = normalizePercentage(legacy.confidence);
+      legacy.plant_identity_confidence = normalizePercentage(
+        legacy.plant_identity_confidence
+      );
     }
     return cropAnalysisSchema.parse(candidate);
   } catch {
