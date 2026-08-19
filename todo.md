@@ -222,3 +222,13 @@
 - [ ] Push the fixes to GitHub main, verify the correct Vercel deployment, and save a checkpoint
 
 - [ ] Add a Vercel SPA fallback so direct routes such as `/crop-health`, `/weather`, `/ask`, and `/farm` do not return `404: NOT_FOUND` while preserving `/api/*` handlers
+
+## Vercel-only production hosting
+
+- [ ] Audit the Vercel project’s production environment variables, domain, build settings, API function, and database requirements
+- [ ] Fix the production OpenAI/tRPC response path causing `Unexpected end of JSON input`
+- [ ] Ensure all required OpenAI, auth, storage, and database secrets are configured in Vercel Production without committing values
+- [ ] Verify Vercel-only Home, direct routes, `/api/health`, `/api/trpc`, Ask AgroGuard, Crop Health upload/camera, and database-dependent flows
+- [ ] Document that Vercel is the production host and save a final checkpoint
+
+- [ ] Exclude `/api/*` from the Vercel SPA fallback so `/api/health` and `/api/trpc` reach the serverless catch-all function
