@@ -251,6 +251,7 @@
 - [x] Replace the Vercel Express export boundary that still causes `FUNCTION_INVOCATION_FAILED` on public tRPC routes
 - [x] Verify public `/api/trpc/auth.me` and `/api/trpc/agroguard.ask` return JSON on the final Vercel deployment
 - [ ] Verify a valid Vercel OpenAI key and `AGROGUARD_AI_MODEL=gpt-4o-mini` produce a live AI answer after the provider route repair
-- [ ] Convert Ask AgroGuard and Crop Health to Gemini-only AI configuration for Vercel production
-- [ ] Remove OpenAI-specific production guidance and add secure Gemini API key setup instructions for Vercel
-- [ ] Push and verify the Gemini-only Vercel bundle from GitHub main
+- [x] Convert Ask AgroGuard and Crop Health to Gemini-only AI configuration for Vercel production
+- [x] Remove OpenAI-specific production guidance and add secure Gemini API key setup instructions for Vercel
+- [x] Push and verify the Gemini-only Vercel bundle from GitHub main
+- [x] Confirm all non-secret Gemini-only Vercel settings are complete before the user adds GEMINI_API_KEY
