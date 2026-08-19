@@ -70,6 +70,10 @@ export function friendlyAiError(error: unknown) {
     return new Error(
       "Gemini could not verify the production AI key. Please check GEMINI_API_KEY in Vercel and redeploy."
     );
+  if (/404.*(model|not found|not supported)|models\//i.test(message))
+    return new Error(
+      "AgroGuard is updating its AI service. Please try again in a moment."
+    );
   if (/400.*(image|input|model|response_format)/i.test(message))
     return new Error(
       "The AI provider rejected this image request. Please try a clear JPG or PNG crop photo."

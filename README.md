@@ -78,9 +78,9 @@ Vercel does not receive environment-variable changes in an already-created deplo
 | `OWNER_OPEN_ID` and `OWNER_NAME` | Project owner identity and admin bootstrap | Manus project configuration                      |
 | `GEMINI_API_KEY`                 | Server-only Gemini provider key            | Google AI Studio key; never use a `VITE_` prefix |
 | `AGROGUARD_AI_PROVIDER`          | Gemini-only selector                       | `gemini`                                         |
-| `AGROGUARD_AI_MODEL`             | Gemini model override                      | `gemini-2.0-flash`                               |
+| `AGROGUARD_AI_MODEL`             | Gemini model override                      | `gemini-2.5-flash`                               |
 
-AgroGuard is configured for **Gemini only**. Set `AGROGUARD_AI_PROVIDER=gemini`, `AGROGUARD_AI_MODEL=gemini-2.0-flash`, and provide `GEMINI_API_KEY`. The server uses Gemini for both Ask AgroGuard and Crop Health; no API key is read by the React client. If the key is absent or rejected, the server returns a clear configuration error instead of making an unauthenticated upstream request.
+AgroGuard is configured for **Gemini only**. Set `AGROGUARD_AI_PROVIDER=gemini`, `AGROGUARD_AI_MODEL=gemini-2.5-flash`, and provide `GEMINI_API_KEY`. The server uses Gemini for both Ask AgroGuard and Crop Health; no API key is read by the React client. Gemini 2.0 Flash is shut down, so the server also safely falls back to Gemini 2.5 Flash if an older Vercel variable remains in place. If the key is absent or rejected, the server returns a clear configuration error instead of making an unauthenticated upstream request.
 
 After deployment, verify `https://your-domain.vercel.app/api/health` returns a JSON status of `ok`, then verify `https://your-domain.vercel.app/api/trpc/auth.me` responds with the unauthenticated tRPC result. Complete OAuth, database, storage, and AI checks only after the corresponding Vercel variables have been added. The MySQL-compatible database must be reachable from Vercel’s server runtime; use the database provider’s TLS/SSL connection option for production.
 
@@ -104,18 +104,18 @@ References:
 
 ## Gemini and Crop Health access notes
 
-The selected production AI provider is Gemini, with `gemini-2.0-flash` as the default model and `GEMINI_API_KEY` stored only on the server. Both Ask AgroGuard and Crop Health use the Gemini OpenAI-compatible endpoint from Vercel. If either feature displays a provider-configuration message, add these variables under the Vercel project’s Production environment and redeploy:
+The selected production AI provider is Gemini, with `gemini-2.5-flash` as the default model and `GEMINI_API_KEY` stored only on the server. Both Ask AgroGuard and Crop Health use the Gemini OpenAI-compatible endpoint from Vercel. If either feature displays a provider-configuration message, add these variables under the Vercel project’s Production environment and redeploy:
 
 ```text
 GEMINI_API_KEY=your_server_only_google_ai_studio_key
 AGROGUARD_AI_PROVIDER=gemini
-AGROGUARD_AI_MODEL=gemini-2.0-flash
+AGROGUARD_AI_MODEL=gemini-2.5-flash
 ```
 
 Crop Health now uses separate controls for **Upload photo** and **Take photo**. The upload control opens the device gallery/file picker, while the camera control uses the mobile browser’s rear-camera capture hint. Users can also drag and drop an image on desktop. The stable production URL is `https://almizanagroguard.vercel.app/`; older aliases such as `ag4u-sayyeed.vercel.app` may return Vercel `404: NOT_FOUND` and should not be used.
 
 ## Vercel-only production boundary
 
-Production deployment runs from the GitHub repository on Vercel. Vercel invokes the bundled CommonJS functions under `api/`; the Manus preview server is not required to serve the production frontend or public Ask AgroGuard/Crop Health requests. Configure `GEMINI_API_KEY`, `AGROGUARD_AI_PROVIDER=gemini`, and `AGROGUARD_AI_MODEL=gemini-2.0-flash` in the Vercel Production environment, then redeploy.
+Production deployment runs from the GitHub repository on Vercel. Vercel invokes the bundled CommonJS functions under `api/`; the Manus preview server is not required to serve the production frontend or public Ask AgroGuard/Crop Health requests. Configure `GEMINI_API_KEY`, `AGROGUARD_AI_PROVIDER=gemini`, and `AGROGUARD_AI_MODEL=gemini-2.5-flash` in the Vercel Production environment, then redeploy.
 
 Crop Health returns the AI assessment independently of optional image/database persistence. If legacy storage or database variables are unavailable, the assessment is still returned and the persistence step is skipped with a server-side warning. This prevents a storage integration problem from being shown to farmers as an AI connection failure.

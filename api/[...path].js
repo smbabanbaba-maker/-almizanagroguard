@@ -300,7 +300,17 @@ var normalizeToolChoice = (toolChoice, tools) => {
 var resolveProvider = () => "gemini";
 var resolveApiUrl = () => "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 var resolveApiKey = () => ENV.geminiApiKey;
-var resolveDefaultModel = () => ENV.aiModel || "gemini-2.0-flash";
+var RETIRED_GEMINI_MODELS = /* @__PURE__ */ new Set([
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite"
+]);
+var resolveDefaultModel = () => {
+  const configuredModel = ENV.aiModel;
+  if (configuredModel && !RETIRED_GEMINI_MODELS.has(configuredModel)) {
+    return configuredModel;
+  }
+  return "gemini-2.5-flash";
+};
 var assertApiKey = () => {
   if (!resolveApiKey()) {
     throw new Error(`${resolveProvider()} AI provider is not configured`);
@@ -833,6 +843,10 @@ function friendlyAiError(error) {
   ))
     return new Error(
       "Gemini could not verify the production AI key. Please check GEMINI_API_KEY in Vercel and redeploy."
+    );
+  if (/404.*(model|not found|not supported)|models\//i.test(message))
+    return new Error(
+      "AgroGuard is updating its AI service. Please try again in a moment."
     );
   if (/400.*(image|input|model|response_format)/i.test(message))
     return new Error(

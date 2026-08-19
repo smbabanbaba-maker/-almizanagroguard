@@ -41,6 +41,16 @@ describe("friendly AI error mapping", () => {
     ).toContain("Gemini could not verify");
   });
 
+  it("maps retired Gemini model responses to a safe service-update message", () => {
+    expect(
+      friendlyAiError(
+        new Error(
+          "LLM invoke failed: 404 Not Found – models/gemini-2.0-flash is not found"
+        )
+      ).message
+    ).toContain("updating its AI service");
+  });
+
   it("maps provider image-request validation failures", () => {
     expect(friendlyAiError(new Error("LLM invoke failed: 400 – invalid image input")).message).toContain(
       "rejected this image request"

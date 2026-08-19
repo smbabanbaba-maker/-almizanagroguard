@@ -219,7 +219,20 @@ const resolveApiUrl = () =>
 
 const resolveApiKey = () => ENV.geminiApiKey;
 
-const resolveDefaultModel = () => ENV.aiModel || "gemini-2.0-flash";
+// Gemini 2.0 Flash is shut down. Keep a defensive compatibility fallback so a
+// stale Vercel environment value cannot take the farmer-facing AI offline.
+const RETIRED_GEMINI_MODELS = new Set([
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+]);
+
+const resolveDefaultModel = () => {
+  const configuredModel = ENV.aiModel;
+  if (configuredModel && !RETIRED_GEMINI_MODELS.has(configuredModel)) {
+    return configuredModel;
+  }
+  return "gemini-2.5-flash";
+};
 
 const assertApiKey = () => {
   if (!resolveApiKey()) {
