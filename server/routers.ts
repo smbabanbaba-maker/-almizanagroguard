@@ -12,6 +12,8 @@ import {
   saveCropAnalysis,
   getRecentScans,
   getFarmOverview,
+  getFarmProfile,
+  saveFarmProfile,
   updateUserProfile,
 } from "./db";
 
@@ -21,6 +23,11 @@ const questionSchema = z.object({
 const imageSchema = z.object({
   imageDataUrl: z.string().min(100).max(12_000_000),
   cropType: z.string().trim().min(1).max(80).default("auto-detect"),
+});
+const farmProfileSchema = z.object({
+  name: z.string().trim().min(2).max(160),
+  location: z.string().trim().max(255).optional(),
+  crops: z.array(z.string().trim().min(1).max(80)).max(24).default([]),
 });
 export const CROP_ANALYSIS_TIMEOUT_MS = 90_000;
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
@@ -188,6 +195,17 @@ export const appRouter = router({
     overview: protectedProcedure.query(({ ctx }) =>
       getFarmOverview(ctx.user.id)
     ),
+    profile: protectedProcedure.query(({ ctx }) => getFarmProfile(ctx.user.id)),
+    saveProfile: protectedProcedure
+      .input(farmProfileSchema)
+      .mutation(({ ctx, input }) =>
+        saveFarmProfile({
+          userId: ctx.user.id,
+          name: input.name,
+          location: input.location,
+          cropNames: input.crops,
+        })
+      ),
   }),
   weather: router({
     current: publicProcedure.query(async () => getLiveWeather()),

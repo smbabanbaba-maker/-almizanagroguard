@@ -274,3 +274,12 @@
 - [x] Validate and deploy the expanded Crop Health flow to Vercel
 - [x] Resolve the live Gemini multi-crop structured-response fallback so clear plant photos return detailed identified-crop guidance rather than the uncertainty fallback (production tomato analysis returned HTTP 200 with detailed structured guidance)
 - [x] Normalize Gemini fractional confidence values into the percentage scale displayed to farmers (live Gemini values `0.92` and `0.85` display as 92% and 85%)
+
+## Farmer experience enhancements
+
+- [ ] Add an English spoken-response control for Crop Health assessments using a browser-supported voice interaction
+- [ ] Store and display each signed-in farmer’s crop-scan history with key health outcomes and time ordering
+- [ ] Add an editable farm profile for farm area, crops, and location context
+- [ ] Surface actionable weather alerts from the existing live weather snapshot in the dashboard and profile-aware guidance
+- [ ] Add an agronomist-referral action for uncertain or high-severity assessments without fabricating contact information
+- [ ] Add coverage for the new storage, procedure, voice-control, weather-alert, and referral behavior, then validate and deploy to Vercel

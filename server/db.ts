@@ -4,6 +4,7 @@ import {
   InsertUser,
   users,
   farms,
+  crops,
   cropHealthScans,
   aiAnalysisResults,
   recommendations,
@@ -130,6 +131,75 @@ export async function getRecentScans(userId: number) {
     .orderBy(desc(cropHealthScans.createdAt))
     .limit(10);
 }
+
+export async function getFarmProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return { farm: undefined, crops: [] };
+  const farmRows = await db
+    .select()
+    .from(farms)
+    .where(eq(farms.userId, userId))
+    .orderBy(desc(farms.updatedAt))
+    .limit(1);
+  const farm = farmRows[0];
+  if (!farm) return { farm: undefined, crops: [] };
+  const cropRows = await db
+    .select()
+    .from(crops)
+    .where(eq(crops.farmId, farm.id))
+    .orderBy(desc(crops.createdAt))
+    .limit(24);
+  return { farm, crops: cropRows };
+}
+
+export async function saveFarmProfile(input: {
+  userId: number;
+  name: string;
+  location?: string;
+  cropNames: string[];
+}) {
+  const db = await getDb();
+  if (!db) return { farm: undefined, crops: [] };
+  const current = await getFarmProfile(input.userId);
+  let farmId = current.farm?.id;
+  if (farmId) {
+    await db
+      .update(farms)
+      .set({
+        name: input.name,
+        location: input.location || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(farms.id, farmId));
+  } else {
+    const inserted = await db.insert(farms).values({
+      userId: input.userId,
+      name: input.name,
+      location: input.location || null,
+    });
+    farmId = Number((inserted as any).insertId);
+  }
+
+  const existingNames = new Set(
+    current.crops.map(crop => crop.name.trim().toLowerCase())
+  );
+  const namesToAdd = Array.from(
+    new Set(input.cropNames.map(name => name.trim()))
+  )
+    .filter(Boolean)
+    .filter(name => !existingNames.has(name.toLowerCase()));
+  if (namesToAdd.length) {
+    await db.insert(crops).values(
+      namesToAdd.map(name => ({
+        farmId: farmId!,
+        name,
+        status: "active" as const,
+      }))
+    );
+  }
+  return getFarmProfile(input.userId);
+}
+
 export async function getFarmOverview(userId: number) {
   const db = await getDb();
   if (!db) return { farms: [], scans: [], analyses: [], recommendations: [] };

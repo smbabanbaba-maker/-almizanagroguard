@@ -1016,6 +1016,51 @@ async function getRecentScans(userId) {
   if (!db) return [];
   return db.select().from(cropHealthScans).where((0, import_drizzle_orm.eq)(cropHealthScans.userId, userId)).orderBy((0, import_drizzle_orm.desc)(cropHealthScans.createdAt)).limit(10);
 }
+async function getFarmProfile(userId) {
+  const db = await getDb();
+  if (!db) return { farm: void 0, crops: [] };
+  const farmRows = await db.select().from(farms).where((0, import_drizzle_orm.eq)(farms.userId, userId)).orderBy((0, import_drizzle_orm.desc)(farms.updatedAt)).limit(1);
+  const farm = farmRows[0];
+  if (!farm) return { farm: void 0, crops: [] };
+  const cropRows = await db.select().from(crops).where((0, import_drizzle_orm.eq)(crops.farmId, farm.id)).orderBy((0, import_drizzle_orm.desc)(crops.createdAt)).limit(24);
+  return { farm, crops: cropRows };
+}
+async function saveFarmProfile(input) {
+  const db = await getDb();
+  if (!db) return { farm: void 0, crops: [] };
+  const current = await getFarmProfile(input.userId);
+  let farmId = current.farm?.id;
+  if (farmId) {
+    await db.update(farms).set({
+      name: input.name,
+      location: input.location || null,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where((0, import_drizzle_orm.eq)(farms.id, farmId));
+  } else {
+    const inserted = await db.insert(farms).values({
+      userId: input.userId,
+      name: input.name,
+      location: input.location || null
+    });
+    farmId = Number(inserted.insertId);
+  }
+  const existingNames = new Set(
+    current.crops.map((crop) => crop.name.trim().toLowerCase())
+  );
+  const namesToAdd = Array.from(
+    new Set(input.cropNames.map((name) => name.trim()))
+  ).filter(Boolean).filter((name) => !existingNames.has(name.toLowerCase()));
+  if (namesToAdd.length) {
+    await db.insert(crops).values(
+      namesToAdd.map((name) => ({
+        farmId,
+        name,
+        status: "active"
+      }))
+    );
+  }
+  return getFarmProfile(input.userId);
+}
 async function getFarmOverview(userId) {
   const db = await getDb();
   if (!db) return { farms: [], scans: [], analyses: [], recommendations: [] };
@@ -1041,6 +1086,11 @@ var questionSchema = import_zod4.z.object({
 var imageSchema = import_zod4.z.object({
   imageDataUrl: import_zod4.z.string().min(100).max(12e6),
   cropType: import_zod4.z.string().trim().min(1).max(80).default("auto-detect")
+});
+var farmProfileSchema = import_zod4.z.object({
+  name: import_zod4.z.string().trim().min(2).max(160),
+  location: import_zod4.z.string().trim().max(255).optional(),
+  crops: import_zod4.z.array(import_zod4.z.string().trim().min(1).max(80)).max(24).default([])
 });
 var CROP_ANALYSIS_TIMEOUT_MS = 9e4;
 var rateBuckets = /* @__PURE__ */ new Map();
@@ -1194,6 +1244,15 @@ var appRouter = router({
   farm: router({
     overview: protectedProcedure.query(
       ({ ctx }) => getFarmOverview(ctx.user.id)
+    ),
+    profile: protectedProcedure.query(({ ctx }) => getFarmProfile(ctx.user.id)),
+    saveProfile: protectedProcedure.input(farmProfileSchema).mutation(
+      ({ ctx, input }) => saveFarmProfile({
+        userId: ctx.user.id,
+        name: input.name,
+        location: input.location,
+        cropNames: input.crops
+      })
     )
   }),
   weather: router({

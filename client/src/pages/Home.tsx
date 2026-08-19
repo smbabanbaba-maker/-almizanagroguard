@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -34,6 +34,10 @@ import {
   Wind,
   Moon,
   Sun,
+  Volume2,
+  Square,
+  ClipboardCopy,
+  AlertTriangle,
   X,
   Zap,
 } from "lucide-react";
@@ -108,6 +112,38 @@ function weatherDisplay(weather: any, loading = false) {
   };
 }
 
+export function buildSpokenAssessment(result: any) {
+  const steps = Array.isArray(result.careSteps)
+    ? result.careSteps.slice(0, 3).join(". ")
+    : "";
+  return [
+    `Crop Health assessment for ${result.crop || "the selected plant"}.`,
+    `Health status: ${result.healthStatus || "uncertain"}.`,
+    `Possible condition: ${result.possibleCondition || "unable to determine"}.`,
+    result.recommendation,
+    steps ? `Recommended next steps: ${steps}.` : "",
+    result.expertRequired
+      ? "An agricultural expert review is recommended before treatment."
+      : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+export function buildReferralNote(result: any) {
+  return [
+    "AgroGuard crop review request",
+    `Crop: ${result.crop || "Plant not identified"}`,
+    `Health status: ${result.healthStatus || "Uncertain"}`,
+    `Possible condition: ${result.possibleCondition || "Unable to determine"}`,
+    `Severity: ${result.severity || "Undetermined"}`,
+    `AI confidence: ${Number(result.confidence || 0)}%`,
+    `Observed symptoms: ${(result.visibleSymptoms || []).join("; ") || "None listed"}`,
+    `AI guidance: ${result.expertGuidance || result.uncertaintyReason || "Please review the uploaded crop image."}`,
+    "Please review this alongside the original crop photo before recommending any treatment.",
+  ].join("\n");
+}
+
 function AppMark() {
   return (
     <div className="brand-mark" aria-hidden="true">
@@ -146,6 +182,10 @@ export default function Home() {
   const [profileEditing, setProfileEditing] = useState(false);
   const [profileName, setProfileName] = useState("");
   const [profileEmail, setProfileEmail] = useState("");
+  const [farmName, setFarmName] = useState("");
+  const [farmLocation, setFarmLocation] = useState("");
+  const [farmCropsText, setFarmCropsText] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [chatMessages, setChatMessages] = useState<
     { role: "user" | "assistant"; content: string }[]
   >([
@@ -179,6 +219,9 @@ export default function Home() {
   const { data: farmOverview } = trpc.farm.overview.useQuery(undefined, {
     enabled: Boolean(user),
   });
+  const farmProfile = trpc.farm.profile.useQuery(undefined, {
+    enabled: Boolean(user),
+  });
   const weather = trpc.weather.current.useQuery(undefined, {
     staleTime: 10 * 60 * 1000,
     retry: 1,
@@ -191,6 +234,20 @@ export default function Home() {
     },
     onError: () => toast.error("We couldn't update your profile right now."),
   });
+  const farmProfileUpdate = trpc.farm.saveProfile.useMutation({
+    onSuccess: () => {
+      farmProfile.refetch();
+      toast.success("Farm profile saved");
+    },
+    onError: () => toast.error("We couldn't save your farm profile right now."),
+  });
+
+  useEffect(() => {
+    if (profileEditing || !farmProfile.data?.farm) return;
+    setFarmName(farmProfile.data.farm.name || "");
+    setFarmLocation(farmProfile.data.farm.location || "");
+    setFarmCropsText(farmProfile.data.crops.map(crop => crop.name).join(", "));
+  }, [farmProfile.data, profileEditing]);
   const ask = trpc.agroguard.ask.useMutation({
     onSuccess: data =>
       setChatMessages(messages => [
@@ -247,6 +304,42 @@ export default function Home() {
     ]);
     setChatInput("");
     ask.mutate({ question });
+  };
+  const voiceSupported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
+  const speakAssessment = (result: any) => {
+    if (!voiceSupported) {
+      toast.error("Voice playback is not supported in this browser.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(
+      buildSpokenAssessment(result)
+    );
+    utterance.rate = 0.95;
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      toast.error("Voice playback could not start. Please try again.");
+    };
+    setIsSpeaking(true);
+    window.speechSynthesis.speak(utterance);
+  };
+  const stopSpeaking = () => {
+    if (!voiceSupported) return;
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  };
+  const copyReferralNote = async (result: any) => {
+    const note = buildReferralNote(result);
+    try {
+      await navigator.clipboard.writeText(note);
+      toast.success(
+        "Review note copied. Share it with a local agronomist or extension officer."
+      );
+    } catch {
+      toast.error("Copy is unavailable in this browser. Please try again.");
+    }
   };
 
   return (
@@ -380,6 +473,11 @@ export default function Home() {
               handleFile={handleFile}
               analyzeImage={analyzeImage}
               isAnalyzing={analyze.isPending}
+              voiceSupported={voiceSupported}
+              isSpeaking={isSpeaking}
+              speakAssessment={speakAssessment}
+              stopSpeaking={stopSpeaking}
+              copyReferralNote={copyReferralNote}
             />
           )}
           {current === "weather" && (
@@ -406,6 +504,23 @@ export default function Home() {
               setProfileName={setProfileName}
               profileEmail={profileEmail || user?.email || ""}
               setProfileEmail={setProfileEmail}
+              farmName={farmName}
+              setFarmName={setFarmName}
+              farmLocation={farmLocation}
+              setFarmLocation={setFarmLocation}
+              farmCropsText={farmCropsText}
+              setFarmCropsText={setFarmCropsText}
+              saveFarmProfile={() =>
+                farmProfileUpdate.mutate({
+                  name: farmName || `${user?.name || "My"} farm`,
+                  location: farmLocation || undefined,
+                  crops: farmCropsText
+                    .split(",")
+                    .map(crop => crop.trim())
+                    .filter(Boolean),
+                })
+              }
+              savingFarmProfile={farmProfileUpdate.isPending}
               saveProfile={() =>
                 profileUpdate.mutate({
                   name: profileName || user?.name || "",
@@ -416,6 +531,7 @@ export default function Home() {
               analyses={farmOverview?.analyses ?? []}
               recommendations={farmOverview?.recommendations ?? []}
               farms={farmOverview?.farms ?? []}
+              farmProfile={farmProfile.data}
             />
           )}
         </div>
@@ -521,6 +637,24 @@ function HomeSection({
           </button>
         ))}
       </div>
+      {weatherSnapshot.alerts.length > 0 && (
+        <Card className="dashboard-alert-card">
+          <CardContent>
+            <AlertTriangle size={19} />
+            <div>
+              <strong>Weather alert for field work</strong>
+              <p>{weatherSnapshot.alerts.join(" ")}</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSection("weather")}
+            >
+              View guidance <ArrowRight size={14} />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
       <Card className="activity-card">
         <CardHeader>
           <div className="card-title-row">
@@ -659,6 +793,11 @@ function CropHealthSection({
   handleFile,
   analyzeImage,
   isAnalyzing,
+  voiceSupported,
+  isSpeaking,
+  speakAssessment,
+  stopSpeaking,
+  copyReferralNote,
 }: any) {
   return (
     <div className="page-stack narrow-page">
@@ -786,13 +925,29 @@ function CropHealthSection({
           </CardContent>
         </Card>
       ) : (
-        <ResultCard result={scanResult} onReset={() => setScanResult(null)} />
+        <ResultCard
+          result={scanResult}
+          onReset={() => setScanResult(null)}
+          voiceSupported={voiceSupported}
+          isSpeaking={isSpeaking}
+          onSpeak={() => speakAssessment(scanResult)}
+          onStopSpeaking={stopSpeaking}
+          onCopyReferral={() => copyReferralNote(scanResult)}
+        />
       )}
     </div>
   );
 }
 
-function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
+function ResultCard({
+  result,
+  onReset,
+  voiceSupported,
+  isSpeaking,
+  onSpeak,
+  onStopSpeaking,
+  onCopyReferral,
+}: any) {
   const confidence = Number(result.confidence || 0);
   const level = confidenceLabel(confidence);
   const symptoms = Array.isArray(result.visibleSymptoms)
@@ -866,6 +1021,26 @@ function ResultCard({ result, onReset }: { result: any; onReset: () => void }) {
               </div>
             </div>
           )}
+          <div className="assessment-actions">
+            {voiceSupported && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={isSpeaking ? onStopSpeaking : onSpeak}
+                aria-pressed={isSpeaking}
+              >
+                {isSpeaking ? <Square size={14} /> : <Volume2 size={15} />}
+                {isSpeaking ? "Stop voice" : "Listen to this result"}
+              </Button>
+            )}
+            {(result.expertRequired ||
+              level === "Low" ||
+              /high|severe/i.test(result.severity || "")) && (
+              <Button variant="outline" size="sm" onClick={onCopyReferral}>
+                <ClipboardCopy size={15} /> Copy agronomist review note
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
       {symptoms.length > 0 && (
@@ -1175,12 +1350,23 @@ function FarmSection({
   setProfileName,
   profileEmail,
   setProfileEmail,
+  farmName,
+  setFarmName,
+  farmLocation,
+  setFarmLocation,
+  farmCropsText,
+  setFarmCropsText,
+  saveFarmProfile,
+  savingFarmProfile,
   saveProfile,
   recentScans = [],
   analyses = [],
   recommendations = [],
   farms = [],
+  farmProfile,
 }: any) {
+  const savedFarm = farmProfile?.farm || farms[0];
+  const savedCrops = farmProfile?.crops || [];
   return (
     <div className="page-stack">
       <div className="feature-intro">
@@ -1200,11 +1386,11 @@ function FarmSection({
         <div>
           <span className="eyebrow">FARM PROFILE</span>
           <h3>
-            {farms[0]?.name ||
+            {savedFarm?.name ||
               (user?.name ? `${user.name}'s farm` : "Your farm profile")}
           </h3>
           <p>
-            <MapPin size={14} /> {farms[0]?.location || "Location not set"}
+            <MapPin size={14} /> {savedFarm?.location || "Location not set"}
           </p>
         </div>
         {user ? (
@@ -1225,6 +1411,30 @@ function FarmSection({
           <CardContent>
             <div className="profile-edit-grid">
               <label>
+                Farm name
+                <input
+                  value={farmName}
+                  onChange={event => setFarmName(event.target.value)}
+                  placeholder="e.g. Green Valley Farm"
+                />
+              </label>
+              <label>
+                Farm location
+                <input
+                  value={farmLocation}
+                  onChange={event => setFarmLocation(event.target.value)}
+                  placeholder="e.g. Kano, Nigeria"
+                />
+              </label>
+              <label className="profile-edit-wide">
+                Crops on this farm
+                <input
+                  value={farmCropsText}
+                  onChange={event => setFarmCropsText(event.target.value)}
+                  placeholder="e.g. Tomato, Maize, Cassava"
+                />
+              </label>
+              <label>
                 Name
                 <input
                   value={profileName}
@@ -1239,8 +1449,15 @@ function FarmSection({
                   onChange={event => setProfileEmail(event.target.value)}
                 />
               </label>
-              <Button className="primary-btn" onClick={saveProfile}>
-                Save profile
+              <Button
+                className="primary-btn"
+                onClick={saveFarmProfile}
+                disabled={savingFarmProfile}
+              >
+                {savingFarmProfile ? "Saving farm..." : "Save farm details"}
+              </Button>
+              <Button variant="outline" onClick={saveProfile}>
+                Save account details
               </Button>
             </div>
           </CardContent>
@@ -1251,8 +1468,12 @@ function FarmSection({
           [
             Sprout,
             "Crops",
-            "No crops added",
-            "Add tomato and other field crops",
+            savedCrops.length
+              ? `${savedCrops.length} crop${savedCrops.length === 1 ? "" : "s"} saved`
+              : "No crops added",
+            savedCrops.length
+              ? savedCrops.map((crop: any) => crop.name).join(" · ")
+              : "Add tomato and other field crops",
           ],
           [
             Activity,
@@ -1277,7 +1498,7 @@ function FarmSection({
           [
             MapPin,
             "Farm location",
-            "Not set",
+            savedFarm?.location || "Not set",
             "Use location to personalize insights",
           ],
         ].map(([Icon, title, value, sub]: any) => (

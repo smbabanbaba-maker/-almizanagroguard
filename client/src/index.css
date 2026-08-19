@@ -652,6 +652,36 @@ button {
   margin-left: auto;
   color: #89958c;
 }
+.dashboard-alert-card {
+  border-color: #f0d8a3;
+  background: #fffaf0;
+}
+.dashboard-alert-card .card-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  color: #825f27;
+}
+.dashboard-alert-card .card-content > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.dashboard-alert-card strong,
+.dashboard-alert-card p {
+  display: block;
+}
+.dashboard-alert-card strong {
+  font-size: 12px;
+}
+.dashboard-alert-card p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+.dashboard-alert-card button {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
 .two-col {
   display: grid;
   grid-template-columns: 1.1fr 0.9fr;
@@ -1151,6 +1181,15 @@ button {
 .confidence-bar {
   margin: 17px 0 20px;
   height: 8px;
+}
+.assessment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 17px;
+}
+.assessment-actions button {
+  font-size: 11px;
 }
 .result-metrics {
   display: grid;
