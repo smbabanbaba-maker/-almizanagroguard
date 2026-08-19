@@ -277,9 +277,9 @@
 
 ## Farmer experience enhancements
 
-- [ ] Add an English spoken-response control for Crop Health assessments using a browser-supported voice interaction
-- [ ] Store and display each signed-in farmer’s crop-scan history with key health outcomes and time ordering
-- [ ] Add an editable farm profile for farm area, crops, and location context
-- [ ] Surface actionable weather alerts from the existing live weather snapshot in the dashboard and profile-aware guidance
-- [ ] Add an agronomist-referral action for uncertain or high-severity assessments without fabricating contact information
-- [ ] Add coverage for the new storage, procedure, voice-control, weather-alert, and referral behavior, then validate and deploy to Vercel
+- [x] Add an English spoken-response control for Crop Health assessments using a browser-supported voice interaction
+- [x] Store and display each signed-in farmer’s crop-scan history with key health outcomes and time ordering
+- [x] Add an editable farm profile for farm area, crops, and location context
+- [x] Surface actionable weather alerts from the existing live weather snapshot in the dashboard and profile-aware guidance
+- [x] Add an agronomist-referral action for uncertain or high-severity assessments without fabricating contact information
+- [x] Add coverage for the new storage, procedure, voice-control, weather-alert, and referral behavior, then validate and deploy to Vercel (44 tests passed; stable Home, My Farm, health, and live-weather endpoints returned HTTP 200 after Vercel marked commit `1549fcc` Ready)
