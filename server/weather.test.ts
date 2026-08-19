@@ -1,10 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
-import { getLiveWeather, normalizeWeatherResponse } from "./weather";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  getLiveWeather,
+  getWeatherLocation,
+  normalizeWeatherResponse,
+} from "./weather";
 
-const location = {
-  latitude: 12.0022,
-  longitude: 8.592,
-  label: "Kano, Nigeria",
+const location = { latitude: 12.0022, longitude: 8.592, label: "Kano, Nigeria" };
+const originalWeatherConfig = {
+  latitude: process.env.AGROGUARD_WEATHER_LATITUDE,
+  longitude: process.env.AGROGUARD_WEATHER_LONGITUDE,
+  location: process.env.AGROGUARD_WEATHER_LOCATION,
 };
 const clearPayload = {
   current: {
@@ -21,6 +26,13 @@ const clearPayload = {
     wind_speed_10m_max: [16],
   },
 };
+
+afterEach(() => {
+  process.env.AGROGUARD_WEATHER_LATITUDE = originalWeatherConfig.latitude;
+  process.env.AGROGUARD_WEATHER_LONGITUDE = originalWeatherConfig.longitude;
+  process.env.AGROGUARD_WEATHER_LOCATION = originalWeatherConfig.location;
+  vi.restoreAllMocks();
+});
 
 describe("AgroGuard live weather provider", () => {
   it("normalizes a current forecast into farmer-ready field guidance", () => {
@@ -76,5 +88,25 @@ describe("AgroGuard live weather provider", () => {
     expect(requestUrl).toContain(
       "daily=precipitation_probability_max%2Cprecipitation_sum"
     );
+  });
+
+  it("uses the documented Kano default without requiring a weather-provider secret", () => {
+    delete process.env.AGROGUARD_WEATHER_LATITUDE;
+    delete process.env.AGROGUARD_WEATHER_LONGITUDE;
+    delete process.env.AGROGUARD_WEATHER_LOCATION;
+
+    expect(getWeatherLocation()).toEqual(location);
+  });
+
+  it("maps an upstream failure to a farmer-safe live-weather message", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(new Response("provider unavailable", { status: 503 }));
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await expect(getLiveWeather(fetcher, location)).rejects.toThrow(
+      "Live weather data is unavailable right now. Please try again shortly."
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

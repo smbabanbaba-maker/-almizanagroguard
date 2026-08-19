@@ -6,7 +6,7 @@ Al-Mizan AI AgroGuard is a responsive agricultural intelligence dashboard for fa
 
 ## Product scope
 
-The workspace contains five sections: Home, Crop Health, Weather / Climate, Ask AgroGuard, and My Farm. The layout uses a persistent desktop sidebar and a mobile bottom navigation bar. Weather is intentionally labeled as pending until a trusted provider is configured; the product does not fabricate live conditions. Ask AgroGuard is a general agricultural guidance assistant and must not be used as a disease diagnosis interface.
+The workspace contains five sections: Home, Crop Health, Weather / Climate, Ask AgroGuard, and My Farm. The layout uses a persistent desktop sidebar and a mobile bottom navigation bar. Weather is supplied through a server-side Open-Meteo forecast request for the configured farm area, with a clearly labeled planning fallback if the provider is temporarily unavailable. Ask AgroGuard is a general agricultural guidance assistant and must not be used as a disease diagnosis interface.
 
 ## Architecture
 
@@ -79,6 +79,9 @@ Vercel does not receive environment-variable changes in an already-created deplo
 | `GEMINI_API_KEY`                 | Server-only Gemini provider key            | Google AI Studio key; never use a `VITE_` prefix |
 | `AGROGUARD_AI_PROVIDER`          | Gemini-only selector                       | `gemini`                                         |
 | `AGROGUARD_AI_MODEL`             | Gemini model override                      | `gemini-3.6-flash`                               |
+| `AGROGUARD_WEATHER_LATITUDE`     | Optional farm-area latitude                | `12.0022`                                        |
+| `AGROGUARD_WEATHER_LONGITUDE`    | Optional farm-area longitude               | `8.5920`                                         |
+| `AGROGUARD_WEATHER_LOCATION`     | Optional farm-area label                   | `Kano, Nigeria`                                  |
 
 AgroGuard is configured for **Gemini only**. Set `AGROGUARD_AI_PROVIDER=gemini`, `AGROGUARD_AI_MODEL=gemini-3.6-flash`, and provide `GEMINI_API_KEY`. The server uses Gemini for both Ask AgroGuard and Crop Health; no API key is read by the React client. Gemini 2.0 Flash is shut down and Gemini 2.5 Flash is unavailable to new users, so the server safely falls back to Gemini 3.6 Flash if an older or non-Gemini Vercel variable remains in place. If the key is absent or rejected, the server returns a clear configuration error instead of making an unauthenticated upstream request.
 
@@ -90,17 +93,15 @@ References:
 [2]: https://vercel.com/docs/frameworks/backend/express "Express on Vercel"
 [3]: https://vercel.com/docs/functions/runtimes/node-js "Vercel Node.js Runtime"
 
-## Weather and agriculture API options
+## Live weather service
 
-The current Weather / Climate interface intentionally uses a clearly labeled preview until a trusted provider is configured. For the first live integration, WeatherAPI.com is a practical low-volume option: its current free plan lists 100,000 calls per month and a 3-day forecast, with limited alerts and air quality.[4] OpenWeather is a strong alternative when global latitude/longitude coverage, geocoding, air pollution, and richer timeline features are important; its current One Call 4.0 page advertises the first 1,000 calls per day free.[5] NASA POWER is useful for longer-term climate, solar, and meteorological indicators and is globally available, but it is better treated as a climate-data complement than as a minute-to-minute alert service.[6]
+AgroGuard’s live Weather / Climate dashboard uses Open-Meteo’s server-side forecast endpoint. The service requests current temperature, apparent temperature, humidity, weather code, and wind speed; it also requests today’s maximum rain probability, rain amount, and maximum wind speed. These variables are normalized into clear farmer guidance and alerts for rain, wind, heat, and thunderstorms. Open-Meteo documents both current and daily forecast variables, supports automatic local time zones, and does not require an API key for the public endpoint used here.[4]
 
-Keep weather requests server-side. Add only the provider key to Vercel Environment Variables, then have a server procedure request the provider and return a normalized weather snapshot to the React client. Do not put `WEATHER_API_KEY`, `OPENWEATHER_API_KEY`, or any other provider secret in a `VITE_` variable. Check the provider’s attribution, commercial-use, and rate-limit terms before a public launch.
+No weather secret is needed for this default integration. To change the farm area, set the three optional `AGROGUARD_WEATHER_*` variables in Vercel and redeploy; values stay server-side and the dashboard continues to use a normalized snapshot. Before a commercial launch, review Open-Meteo’s current licence, attribution, and rate-limit terms or replace the adapter in `server/weather.ts` with a contracted provider.
 
 References:
 
-[4]: https://www.weatherapi.com/pricing.aspx "WeatherAPI.com Pricing"
-[5]: https://openweathermap.org/price "OpenWeather Pricing"
-[6]: https://power.larc.nasa.gov/docs/services/api/temporal/hourly/ "NASA POWER Hourly API"
+[4]: https://open-meteo.com/en/docs "Open-Meteo Weather Forecast API"
 
 ## Gemini and Crop Health access notes
 

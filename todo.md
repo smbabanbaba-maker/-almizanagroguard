@@ -205,12 +205,12 @@
 
 ## Live weather integration
 
-- [ ] Audit the current weather UI, server router, environment configuration, and provider boundary
-- [ ] Implement a secure server-side weather provider endpoint with normalized response data
-- [ ] Connect Home and Weather / Climate dashboard views to live weather data with loading, error, and fallback states
-- [ ] Add tests for provider success, missing-key configuration, upstream errors, and response normalization
-- [ ] Validate type checks, tests, formatting, production build, and public Vercel weather behavior
-- [ ] Document the weather API signup, Vercel secret name, attribution, and deployment steps
+- [x] Audit the current weather UI, server router, environment configuration, and provider boundary
+- [x] Implement a secure server-side weather provider endpoint with normalized response data
+- [x] Connect Home and Weather / Climate dashboard views to live weather data with loading, error, and fallback states
+- [x] Add tests for provider success, the intentionally no-secret default configuration, upstream errors, and response normalization
+- [x] Validate type checks, tests, formatting, production build, and public Vercel weather behavior (public `weather.current` returned HTTP 200)
+- [x] Document the weather API signup, Vercel secret name, attribution, and deployment steps (the deployed Open-Meteo provider needs no secret; optional location variables are documented)
 - [ ] Save a checkpoint containing the live weather integration
 
 ## Latest AI and camera-access issue
