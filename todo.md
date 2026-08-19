@@ -258,3 +258,9 @@
 - [x] Replace the shut-down `gemini-2.0-flash` configuration with a supported Gemini model and add safe handling for retired-model responses (provider-directed `gemini-3.6-flash` fallback)
 - [x] Record a sanitized Gemini upstream failure reason in Vercel logs so a remaining production 404 can be corrected without exposing secrets to farmers
 - [x] Give Crop Health a dedicated, bounded Gemini vision timeout that accommodates structured image analysis on Vercel
+
+## Crop Health invalid-analysis repair
+
+- [ ] Inspect the live Crop Health invalid-analysis response caused after a successful image upload
+- [ ] Harden Gemini structured-result parsing and convert malformed model output into an actionable farmer-safe result
+- [ ] Add regression coverage for Gemini vision content variants and deploy the repaired Crop Health flow to Vercel

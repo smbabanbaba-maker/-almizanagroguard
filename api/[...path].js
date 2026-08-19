@@ -596,15 +596,27 @@ var cropAnalysisSchema = import_zod2.z.object({
 function contentToText(content) {
   if (typeof content === "string") return content;
   if (Array.isArray(content))
-    return content.map(
-      (part) => typeof part === "string" ? part : part?.text ?? part?.content ?? ""
-    ).join("");
+    return content.map((part) => {
+      if (typeof part === "string") return part;
+      const candidate = part?.text ?? part?.content ?? part?.output_text ?? "";
+      if (typeof candidate === "string") return candidate;
+      if (candidate && typeof candidate === "object" && "value" in candidate)
+        return String(candidate.value ?? "");
+      return "";
+    }).join("");
   if (content && typeof content === "object" && "text" in content)
     return String(content.text);
   return JSON.stringify(content ?? "");
 }
+function extractJsonObject(text2) {
+  const trimmed = text2.trim();
+  const unfenced = trimmed.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+  const start = unfenced.indexOf("{");
+  const end = unfenced.lastIndexOf("}");
+  return start >= 0 && end > start ? unfenced.slice(start, end + 1) : unfenced;
+}
 function parseCropAnalysis(content) {
-  const text2 = contentToText(content).trim();
+  const text2 = extractJsonObject(contentToText(content));
   try {
     return cropAnalysisSchema.parse(JSON.parse(text2));
   } catch {
@@ -612,6 +624,18 @@ function parseCropAnalysis(content) {
       "The AI returned an invalid analysis. Please try another clear image."
     );
   }
+}
+function createUnassessedCropAnalysis() {
+  return {
+    crop: "Tomato",
+    possible_condition: "Unable to assess from this image",
+    confidence: 0,
+    severity: "Undetermined",
+    recommendation: "Take another photo of one tomato leaf in daylight. Keep the leaf in focus, fill most of the frame, and avoid showing farm equipment or wide field scenes.",
+    expert_required: true,
+    expert_guidance: "Consult a qualified agricultural expert if symptoms are spreading, the crop is declining quickly, or a clearer photo is still inconclusive.",
+    uncertainty_reason: "The image or the AI response did not provide enough clear leaf detail for a reliable preliminary assessment."
+  };
 }
 
 // server/ai/cropAnalysis.ts
@@ -651,7 +675,16 @@ async function analyzeCropImage(imageDataUrl, cropType = "tomato", adapter = new
       "The first AgroGuard model is configured for tomato images only."
     );
   const response = await adapter.analyze(imageDataUrl, cropType);
-  const result = parseCropAnalysis(response.content);
+  let result;
+  try {
+    result = parseCropAnalysis(response.content);
+  } catch (error) {
+    console.warn("[AgroGuard] Crop analysis model output was incomplete", {
+      message: error instanceof Error ? error.message : String(error),
+      contentType: Array.isArray(response.content) ? "array" : typeof response.content
+    });
+    result = createUnassessedCropAnalysis();
+  }
   const thresholds = getConfidenceThresholds();
   const confidenceBand = result.confidence >= thresholds.high ? "high" : result.confidence >= thresholds.medium ? "medium" : "low";
   return { result, imageBytes: bytes, mimeType, confidenceBand };

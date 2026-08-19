@@ -29,4 +29,24 @@ describe("AgroGuard result parser", () => {
       )
     ).toMatchObject({ crop: "tomato", confidence: 42, expert_required: true });
   });
+  it("accepts fenced JSON and output-text blocks from compatible Gemini responses", () => {
+    const analysis = {
+      crop: "Tomato",
+      possible_condition: "Leaf detail unclear",
+      confidence: 20,
+      severity: "Undetermined",
+      recommendation: "Retake the leaf photo in daylight.",
+      expert_required: true,
+      expert_guidance: "Consult an expert if symptoms persist.",
+      uncertainty_reason: "The leaf is not clear enough.",
+    };
+    expect(
+      parseCropAnalysis([
+        {
+          type: "output_text",
+          text: `\`\`\`json\n${JSON.stringify(analysis)}\n\`\`\``,
+        },
+      ])
+    ).toMatchObject({ crop: "Tomato", confidence: 20 });
+  });
 });

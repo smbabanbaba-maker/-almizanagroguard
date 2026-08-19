@@ -2,7 +2,11 @@ import {
   CropVisionModelAdapter,
   BuiltInVisionModelAdapter,
 } from "./modelAdapter";
-import { CropAnalysis, parseCropAnalysis } from "./resultParser";
+import {
+  CropAnalysis,
+  createUnassessedCropAnalysis,
+  parseCropAnalysis,
+} from "./resultParser";
 export type { CropAnalysis } from "./resultParser";
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
@@ -58,7 +62,18 @@ export async function analyzeCropImage(
       "The first AgroGuard model is configured for tomato images only."
     );
   const response = await adapter.analyze(imageDataUrl, cropType);
-  const result = parseCropAnalysis(response.content);
+  let result: CropAnalysis;
+  try {
+    result = parseCropAnalysis(response.content);
+  } catch (error) {
+    console.warn("[AgroGuard] Crop analysis model output was incomplete", {
+      message: error instanceof Error ? error.message : String(error),
+      contentType: Array.isArray(response.content)
+        ? "array"
+        : typeof response.content,
+    });
+    result = createUnassessedCropAnalysis();
+  }
   const thresholds = getConfidenceThresholds();
   const confidenceBand =
     result.confidence >= thresholds.high
