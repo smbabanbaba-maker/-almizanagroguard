@@ -298,3 +298,9 @@
 - [x] Diagnose and fix the production Crop Health response parsing failure that displays “Unexpected token” after a photo is submitted
 - [x] Add a regression test so non-JSON upstream/server responses are converted to a farmer-safe message rather than reaching the browser JSON parser
 - [x] Validate, deploy, and smoke-test the Crop Health fix on the stable Vercel domain
+
+## Deferred database activation
+
+- [x] Add a secure `JWT_SECRET` to the Vercel Production and Preview environments after user confirmation
+- [x] Keep public AI and dashboard flows healthy while `DATABASE_URL` is deliberately deferred
+- [x] Document the MySQL/TiDB-compatible `DATABASE_URL` activation step for Login, Register, scan history, farm profile, and notifications

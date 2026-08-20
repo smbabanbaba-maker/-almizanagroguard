@@ -120,3 +120,9 @@ Crop Health now uses separate controls for **Upload photo** and **Take photo**. 
 Production deployment runs from the GitHub repository on Vercel. Vercel invokes the bundled CommonJS functions under `api/`; the Manus preview server is not required to serve the production frontend or public Ask AgroGuard/Crop Health requests. Configure `GEMINI_API_KEY`, `AGROGUARD_AI_PROVIDER=gemini`, and `AGROGUARD_AI_MODEL=gemini-3.6-flash` in the Vercel Production environment, then redeploy.
 
 Crop Health returns the AI assessment independently of optional image/database persistence. If legacy storage or database variables are unavailable, the assessment is still returned and the persistence step is skipped with a server-side warning. This prevents a storage integration problem from being shown to farmers as an AI connection failure.
+
+## Deferred farmer-account database activation
+
+`JWT_SECRET` is stored as a sensitive Vercel variable for **Production** and **Preview**. The public Home, Weather, Crop Health, and Ask AgroGuard features do not depend on a database and remain available while database activation is deferred.
+
+To activate permanent **Register, Login, scan history, farm profile, and notifications**, create a MySQL- or TiDB-compatible database, copy its TLS/SSL-enabled connection string, and add it as the sensitive `DATABASE_URL` variable in Vercel for **Production** and **Preview**. Do not commit the value, place it in browser code, or paste it into a public ticket. After adding it, redeploy the project and run the database migration before registering the first farmer account. The application safely shows public features until that connection is available.
