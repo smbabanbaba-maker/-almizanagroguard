@@ -286,12 +286,13 @@
 
 ## Farmer account and dashboard experience
 
-- [ ] Audit the current Vercel-compatible sign-in capability and define a secure English registration and login approach
-- [ ] Implement usable Register, Login, Logout, and account-profile entry points without exposing credentials or weakening session security
-- [ ] Build a detailed signed-in scan-history view with each saved outcome, timestamp, confidence, and follow-up guidance
-- [ ] Add an in-app notifications center for saved scans, expert-review prompts, and current weather attention items
-- [ ] Improve the signed-in dashboard with clear account status, activity summaries, and practical empty states
-- [ ] Add regression coverage for account, history, notification, and dashboard behavior, then validate and deploy to Vercel
+- [x] Audit the current Vercel-compatible sign-in capability and define a secure English registration and login approach
+- [x] Implement usable Register, Login, Logout, and account-profile entry points without exposing credentials or weakening session security
+- [x] Build a detailed signed-in scan-history view with each saved outcome, timestamp, confidence, and follow-up guidance
+- [x] Add an in-app notifications center for saved scans, expert-review prompts, and current weather attention items
+- [x] Improve the signed-in dashboard with clear account status, activity summaries, and practical empty states
+- [x] Add regression coverage for account, history, notification, and dashboard behavior, then validate and deploy to Vercel
+- [ ] Activate persistent production account, history, profile, and notification storage once a MySQL/TiDB-compatible `DATABASE_URL` is provided
 
 ## Crop Health response regression
 
