@@ -4,6 +4,7 @@ import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useTheme } from "@/contexts/ThemeContext";
 import { prepareImageDataUrl } from "@/lib/imagePreparation";
+import { humanizeClientError } from "@/lib/clientErrors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,24 +61,6 @@ const navItems: { id: Section; label: string; icon: typeof Leaf }[] = [
 
 const confidenceLabel = (value: number) =>
   value >= 70 ? "High" : value >= 50 ? "Medium" : "Low";
-
-function humanizeClientError(error: unknown, fallback: string) {
-  const message = error instanceof Error ? error.message.trim() : "";
-  try {
-    const issues = JSON.parse(message) as Array<{
-      code?: string;
-      path?: string[];
-      message?: string;
-    }>;
-    const issue = Array.isArray(issues) ? issues[0] : undefined;
-    if (issue?.code === "too_small" && issue.path?.includes("question")) {
-      return "Please type a short agricultural question first.";
-    }
-  } catch {
-    // tRPC may already provide a normal message; keep the fallback below for empty errors.
-  }
-  return message || fallback;
-}
 
 const weatherFallback = {
   location: "Your farm area",
